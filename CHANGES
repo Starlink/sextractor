@@ -1,4 +1,11 @@
-This is V2.2.1 (February  8 2001). New features include:
+This is V2.2.2 (September  24 2001). New features include:
+- Compiler-dependant neural filtering bug fixed.
+- XMIN_IMAGE and co now follow the FITS convention (first
+  pixel in image is at (1,1) in pixel coordinates).
+- Fixed a typo in displayed text during background map-
+  making
+
+/*- Previous notes for V2.2.2 (February  8 2001) */
 - Memory allocation bug for large images on Alphas while
   preparing the background-map fixed.
 - CLEANing bug with hollow objects on weighted images

@@ -1,6 +1,3 @@
-May 13, 2003
-
-This is V2.3 of SExtractor.
 SExtractor stands for ``Source Extractor'': a software for making
 catalog of sources from astronomical images.
 Multi-Extension FITS is now supported. Binary output catalogs are also MEFs.

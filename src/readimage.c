@@ -5,14 +5,20 @@
 *
 *	Part of:	SExtractor
 *
-*	Author:		E.BERTIN (IAP, Leiden observatory & ESO)
+*	Author:		E.BERTIN (IAP)
 *
 *	Contents:	functions for input of image data.
 *
-*	Last modify:	06/05/99
+*	Last modify:	13/12/2002
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
+
+#ifdef HAVE_CONFIG_H
+#include        "config.h"
+#endif
+
+#include	<math.h>
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
@@ -20,9 +26,10 @@
 #include	"wcs/wcs.h"
 #include	"define.h"
 #include	"globals.h"
+#include	"prefs.h"
 #include	"check.h"
 #include	"field.h"
-#include	"fitscat.h"
+#include	"fits/fitscat.h"
 #include	"interpolate.h"
 #include	"back.h"
 #include	"astrom.h"
@@ -217,7 +224,7 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
   switch(field->compress_type)
     {
 /*-- Uncompressed image */
-    case COMPRESS_NONE:
+    case ICOMPRESS_NONE:
       bowl = DATA_BUFSIZE/field->bytepix;
       spoonful = size<bowl?size:bowl;
       for(; size>0; size -= spoonful)
@@ -238,9 +245,8 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
             break;
 
           case BP_SHORT:
-#          ifdef BSWAP
-            swapbytes(bufdata, 2, spoonful);
-#          endif
+            if (bswapflag)
+              swapbytes(bufdata, 2, spoonful);
             if (field->bitsgn)
               for (i=spoonful; i--; bufdata += sizeof(short))
                 *(ptr++) = *((short *)bufdata)*bs + bz;
@@ -250,9 +256,8 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
             break;
 
           case BP_LONG:
-#          ifdef BSWAP
-            swapbytes(bufdata, 4, spoonful);
-#          endif
+            if (bswapflag)
+              swapbytes(bufdata, 4, spoonful);
             if (field->bitsgn)
               for (i=spoonful; i--; bufdata += sizeof(LONG))
                 *(ptr++) = *((LONG *)bufdata)*bs + bz;
@@ -262,17 +267,15 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
               break;
 
           case BP_FLOAT:
-#          ifdef BSWAP
-            swapbytes(bufdata, 4, spoonful);
-#          endif
+            if (bswapflag)
+              swapbytes(bufdata, 4, spoonful);
             for (i=spoonful; i--; bufdata += sizeof(float))
               *(ptr++) = *((float *)bufdata)*bs + bz;
             break;
 
           case BP_DOUBLE:
-#          ifdef BSWAP
-            swapbytes(bufdata, 8, spoonful);
-#          endif
+            if (bswapflag)
+              swapbytes(bufdata, 8, spoonful);
             for (i=spoonful; i--; bufdata += sizeof(double))
               *(ptr++) = *((double *)bufdata)*bs + bz;
             break;
@@ -286,7 +289,7 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
       break;
 
 /*-- Compressed image */
-    case COMPRESS_BASEBYTE:
+    case ICOMPRESS_BASEBYTE:
       bufdata = field->compress_bufptr;
       curval = field->compress_curval;
       npix = field->compress_npix;
@@ -300,30 +303,26 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
           bufdata = field->compress_buf;
           QFREAD(bufdata, FBSIZE, field->file, field->filename);
           curval = 0;
-#        ifdef BSWAP
-          swapbytes(bufdata, 4, 1);
-#        endif
+          if (bswapflag)
+            swapbytes(bufdata, 4, 1);
           field->compress_checkval = *((int *)bufdata);
-         bufdata += 4;
-#        ifdef BSWAP
-          swapbytes(bufdata, 2, 1);
-#        endif
+          bufdata += 4;
+          if (bswapflag)
+            swapbytes(bufdata, 2, 1);
           npix = (int)(*((short *)bufdata))-1;
           bufdata+=2;
           }
         if ((dval=(int)*(bufdata++))==-128)
           {
-#        ifdef BSWAP
-          swapbytes(bufdata, 2, 1);
-#        endif
+          if (bswapflag)
+            swapbytes(bufdata, 2, 1);
           memcpy(&val16, bufdata, 2);
           dval = (int)val16;
           if (dval==-32768)
             {
             bufdata += 2;
-#          ifdef BSWAP
-            swapbytes(bufdata, 4, 1);
-#          endif
+            if (bswapflag)
+              swapbytes(bufdata, 4, 1);
             memcpy(&dval,bufdata,4);
             bufdata += 4;
             }
@@ -338,7 +337,7 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
       field->compress_npix = npix;
       break;
 
-    case COMPRESS_PREVPIX:
+    case ICOMPRESS_PREVPIX:
       bufdata = field->compress_bufptr;
       curval = field->compress_curval;
       npix = field->compress_npix;
@@ -351,9 +350,8 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
 		field->filename);
           bufdata = field->compress_buf;
           QFREAD(bufdata, FBSIZE, field->file, field->filename);
-#        ifdef BSWAP
-          swapbytes(bufdata, 2, 3);
-#        endif
+          if (bswapflag)
+            swapbytes(bufdata, 2, 3);
           curval = (int)*(short *)bufdata;
           npix = (int)*(short *)(bufdata+=2)-1;
           field->compress_checkval = (int)(*(short *)(bufdata+=2));
@@ -361,9 +359,8 @@ void	readdata(picstruct *field, PIXTYPE *ptr, int size)
           }
         if ((dval=(int)*(bufdata++))==-128)
           {
-#        ifdef BSWAP
-          swapbytes(bufdata, 2, 1);
-#        endif
+          if (bswapflag)
+            swapbytes(bufdata, 2, 1);
           memcpy(&val16, bufdata, 2);
           curval = (int)val16;
           bufdata += 2;
@@ -400,7 +397,7 @@ void	readidata(picstruct *field, FLAGTYPE *ptr, int size)
   switch(field->compress_type)
     {
 /*-- Uncompressed image */
-    case COMPRESS_NONE:
+    case ICOMPRESS_NONE:
       bowl = DATA_BUFSIZE/field->bytepix;
       spoonful = size<bowl?size:bowl;
       for(; size>0; size -= spoonful)
@@ -417,17 +414,15 @@ void	readidata(picstruct *field, FLAGTYPE *ptr, int size)
             break;
 
           case BP_SHORT:
-#          ifdef BSWAP
-            swapbytes(bufdata, 2, spoonful);
-#          endif
+            if (bswapflag)
+              swapbytes(bufdata, 2, spoonful);
             for (i=spoonful; i--; bufdata += sizeof(USHORT))
               *(ptr++) = (FLAGTYPE)*((USHORT *)bufdata);
             break;
 
           case BP_LONG:
-#          ifdef BSWAP
-            swapbytes(bufdata, 4, spoonful);
-#          endif
+            if (bswapflag)
+              swapbytes(bufdata, 4, spoonful);
             for (i=spoonful; i--; bufdata += sizeof(ULONG))
               *(ptr++) = (FLAGTYPE)*((ULONG *)bufdata);
             break;
@@ -446,7 +441,7 @@ void	readidata(picstruct *field, FLAGTYPE *ptr, int size)
       break;
 
 /*-- Compressed image */
-    case COMPRESS_BASEBYTE:
+    case ICOMPRESS_BASEBYTE:
       bufdata = field->compress_bufptr;
       curval = field->compress_curval;
       npix = field->compress_npix;
@@ -460,30 +455,26 @@ void	readidata(picstruct *field, FLAGTYPE *ptr, int size)
           bufdata = field->compress_buf;
           QFREAD(bufdata, FBSIZE, field->file, field->filename);
           curval = 0;
-#        ifdef BSWAP
-          swapbytes(bufdata, 4, 1);
-#        endif
+          if (bswapflag)
+            swapbytes(bufdata, 4, 1);
           field->compress_checkval = *((int *)bufdata);
          bufdata += 4;
-#        ifdef BSWAP
-          swapbytes(bufdata, 2, 1);
-#        endif
+         if (bswapflag)
+           swapbytes(bufdata, 2, 1);
           npix = (int)(*((short *)bufdata))-1;
           bufdata+=2;
           }
         if ((dval=(int)*(bufdata++))==-128)
           {
-#        ifdef BSWAP
-          swapbytes(bufdata, 2, 1);
-#        endif
+          if (bswapflag)
+            swapbytes(bufdata, 2, 1);
           memcpy(&val16, bufdata, 2);
           dval = (int)val16;
           if (dval==-32768)
             {
             bufdata += 2;
-#          ifdef BSWAP
-            swapbytes(bufdata, 4, 1);
-#          endif
+            if (bswapflag)
+              swapbytes(bufdata, 4, 1);
             memcpy(&dval,bufdata,4);
             bufdata += 4;
             }
@@ -498,7 +489,7 @@ void	readidata(picstruct *field, FLAGTYPE *ptr, int size)
       field->compress_npix = npix;
       break;
 
-    case COMPRESS_PREVPIX:
+    case ICOMPRESS_PREVPIX:
       bufdata = field->compress_bufptr;
       curval = field->compress_curval;
       npix = field->compress_npix;
@@ -511,9 +502,8 @@ void	readidata(picstruct *field, FLAGTYPE *ptr, int size)
 		field->filename);
           bufdata = field->compress_buf;
           QFREAD(bufdata, FBSIZE, field->file, field->filename);
-#        ifdef BSWAP
-          swapbytes(bufdata, 2, 3);
-#        endif
+          if (bswapflag)
+            swapbytes(bufdata, 2, 3);
           curval = (int)*(short *)bufdata;
           npix = (int)*(short *)(bufdata+=2)-1;
           field->compress_checkval = (int)(*(short *)(bufdata+=2));
@@ -521,9 +511,8 @@ void	readidata(picstruct *field, FLAGTYPE *ptr, int size)
           }
         if ((dval=(int)*(bufdata++))==-128)
           {
-#        ifdef BSWAP
-          swapbytes(bufdata, 2, 1);
-#        endif
+          if (bswapflag)
+            swapbytes(bufdata, 2, 1);
           memcpy(&val16, bufdata, 2);
           curval = (int)val16;
           bufdata += 2;
@@ -558,6 +547,11 @@ void	readimagehead(picstruct *field)
 /* Open the file */
   if (!(field->file = fopen(field->filename, "rb")))
     error(EXIT_FAILURE,"*Error*: cannot open ", field->filename);
+/* Go directly to the right extension */
+  if (field->mefpos)
+    {
+    QFSEEK(field->file, field->mefpos, SEEK_SET, field->filename);
+    }
   buf = readfitshead(field->file, field->filename, &n);
   if(FITSTOI("NAXIS   ", 0) < 2)
     error(EXIT_FAILURE, field->filename, " does NOT contain 2D-data!");
@@ -574,7 +568,7 @@ void	readimagehead(picstruct *field)
   field->bytepix = (field->bitpix>0?field->bitpix:-field->bitpix)>>3;
   field->width = FITSTOI("NAXIS1  ", 0);
   field->height = FITSTOI("NAXIS2  ", 0);
-  field->npix = (size_t)field->width*field->height;
+  field->npix = (KINGSIZE_T)field->width*field->height;
   field->bscale = FITSTOF("BSCALE  ", 1.0);
 
   field->bzero = FITSTOF("BZERO   ", 0.0);
@@ -588,11 +582,11 @@ void	readimagehead(picstruct *field)
   if (fitsread(buf, "IMAGECOD", st, H_STRING, T_STRING)==RETURN_OK)
     {
     if (!strcmp(st, "NONE"))
-      field->compress_type = COMPRESS_NONE;
+      field->compress_type = ICOMPRESS_NONE;
     else if (!strcmp(st, "BASEBYTE"))
-      field->compress_type = COMPRESS_BASEBYTE;
+      field->compress_type = ICOMPRESS_BASEBYTE;
     else if (!strcmp(st, "PREV_PIX"))
-      field->compress_type = COMPRESS_PREVPIX;
+      field->compress_type = ICOMPRESS_PREVPIX;
     else
       warning("Compression skipped: unknown IMAGECOD parameter:", st);
     }
@@ -789,12 +783,14 @@ char    *readfitshead(FILE *file, char *filename, int *nblock)
 /* Ugly but necessary patch to handle this stupid DeNIS compressed format! */
     if (strncmp(buf, "XTENSION", 8))
       error(EXIT_FAILURE, filename, " is NOT a FITS file!");
+/*
     else
       {
       memset(buf, ' ', 80);
       strncpy(buf,
 	"SIMPLE  =                    T / Decompressed by SExtractor", 59);
       }
+*/
     }
 
   for (n=1; !fitsnfind(buf,"END     ", n); n++)

@@ -5,14 +5,18 @@
 *
 *	Part of:	SExtractor
 *
-*	Author:		E.BERTIN (IAP, Leiden observatory & ESO)
+*	Author:		E.BERTIN (IAP)
 *
 *	Contents:	analyse(), endobject()...: measurements on detections.
 *
-*	Last modify:	24/09/2001
+*	Last modify:	16/12/2002
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
+
+#ifdef HAVE_CONFIG_H
+#include        "config.h"
+#endif
 
 #include	<math.h>
 #include	<stdio.h>
@@ -21,7 +25,8 @@
 
 #include	"define.h"
 #include	"globals.h"
-#include	"fitscat.h"
+#include	"prefs.h"
+#include	"fits/fitscat.h"
 #include	"back.h"
 #include	"check.h"
 #include	"assoc.h"
@@ -42,7 +47,7 @@ void  analyse(picstruct *field, picstruct *dfield, int objnb,
    objstruct	*obj = objlist->obj+objnb;
 
 /* Do photometry on the detection image if no other image available */
-  obj->number = ++cat.ndetect;
+  obj->number = ++thecat.ndetect;
   obj->bkg = (float)back(field, (int)(obj->mx+0.5), (int)(obj->my+0.5));
   obj->dbkg = 0.0;
   if (prefs.pback_type == LOCAL)
@@ -386,6 +391,9 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
 
   obj = &objlist->obj[n];
 
+/* Current FITS extension */
+  obj2->ext_number = thecat.currext;
+
 /* Source position */
   obj2->sposx = (float)(obj2->posx = obj->mx+1.0); /* That's standard FITS */
   obj2->sposy = (float)(obj2->posy = obj->my+1.0);
@@ -533,7 +541,7 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
 
 /*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 
-    newnumber = ++cat.ntotal;
+    newnumber = ++thecat.ntotal;
 /*-- update segmentation map */
     if (check=prefs.check[CHECK_SEGMENTATION])
       {
@@ -614,7 +622,7 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
           obj2->mag_psf[0] = thepsfit->flux[j]>0.0?
 		prefs.mag_zeropoint -2.5*log10(thepsfit->flux[j]) : 99.0;
         if (j)
-          obj->number = ++cat.ntotal;
+          obj->number = ++thecat.ntotal;
         }
 
       FPRINTF(OUTPUT, "%8d %6.1f %6.1f %5.1f %5.1f %12g "

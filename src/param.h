@@ -9,7 +9,7 @@
 *
 *	Contents:	parameter list for catalog data.
 *
-*	Last modify:	20/07/99
+*	Last modify:	16/12/2002
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
@@ -20,8 +20,9 @@ obj2struct	outobj2;
 /*--------------------------------- initialization --------------------------*/
 keystruct	objkey[] = {
   {"NUMBER", "Running object number",
-	&outobj.number, H_INT, T_LONG, "%10d"},
-
+	&outobj.number, H_INT, T_LONG, "%10d", ""},
+  {"EXT_NUMBER", "FITS extension number",
+	&outobj2.ext_number, H_INT, T_SHORT, "%3d", ""},
   {"FLUX_ISO", "Isophotal flux",
 	&outobj2.flux_iso, H_FLOAT, T_FLOAT, "%12g", "count"},
   {"FLUXERR_ISO", "RMS error for isophotal flux",

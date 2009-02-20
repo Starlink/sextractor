@@ -9,7 +9,7 @@
 *
 *	Contents:	Keywords for the configuration file.
 *
-*	Last modify:	18/07/2005
+*	Last modify:	13/07/2006
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
@@ -27,6 +27,8 @@ One must have:	MAXLIST >= 1 (preferably >= 16!)
 /*------------------------------- preferences -------------------------------*/
 typedef struct
   {
+  char		**command_line;				/* Command line */
+  int		ncommand_line;				/* nb of params */
   char		prefs_name[MAXCHAR];			/* prefs filename*/
   char		*(image_name[2]);			/* image filenames */
   int		nimage_name;				/* nb of params */
@@ -72,7 +74,7 @@ typedef struct
   int		dweight_flag;				/* detection weight? */
   int		weightgain_flag;			/* weight gain? */
 /*----- photometry */
-  enum	{CAT_NONE, ASCII, ASCII_HEAD, ASCII_SKYCAT,
+  enum	{CAT_NONE, ASCII, ASCII_HEAD, ASCII_SKYCAT, ASCII_VO,
 	FITS_LDAC, FITS_TPX, FITS_10}
 		cat_type;				/* type of catalog */
   enum	{PNONE, FIXED, AUTO}		apert_type;	/* type of aperture */
@@ -116,6 +118,14 @@ typedef struct
 /*----- miscellaneous */
   int		pipe_flag;				/* allow piping ? */
   enum	{QUIET, NORM, WARN, FULL}      	verbose_type;	/* display type */
+  int		xml_flag;				/* Write XML file? */
+  char		xml_name[MAXCHAR];			/* XML file name */
+  char		xsl_name[MAXCHAR];			/* XSL file name (or URL) */
+  char		sdate_start[12];			/* SCAMP start date */
+  char		stime_start[12];			/* SCAMP start time */
+  char		sdate_end[12];				/* SCAMP end date */
+  char		stime_end[12];				/* SCAMP end time */
+  double	time_diff;				/* Execution time */
 /*----- CHECK-images */
   int		check_flag;				/* CHECK-image flag */
   checkenum    	check_type[MAXCHECK];		       	/* check-image types */
@@ -160,6 +170,8 @@ typedef struct
   int		ninterp_ytimeout;       		/* nb of params */
 /*----- astrometry */
   int		world_flag;				/* WORLD required */
+  char		coosys[16];				/* VOTable coord.sys */
+  double	epoch;					/* VOTable epoch */
 /*----- growth curve */
   int		growth_flag;				/* gr. curve needed */
   int		flux_growthsize;       			/* number of elem. */
@@ -170,7 +182,9 @@ typedef struct
   int		nflux_frac;       			/* number of elem. */
 /*----- PSF-fitting */
   int		psf_flag;				/* PSF-fit needed */
-  char		psf_name[MAXCHAR];			/* PSF filename */
+  int		dpsf_flag;				/* dual image PSF-fit */
+  char		*(psf_name[2]);				/* PSF filename */
+  int		npsf_name;				/* nb of params */
   int		psf_npsfmax;				/* Max # of PSFs */
   enum	{PSFDISPLAY_SPLIT, PSFDISPLAY_VECTOR}
 		psfdisplay_type;			/* PSF display type */
@@ -186,9 +200,10 @@ typedef struct
   int		pc_flag;				/* PC-fit needed */
   int		pc_vectorsize;				/* nb of params */
 /*----- customize */
-  double	mama_corflex;
   int		fitsunsigned_flag;			/* Force unsign FITS */
   int		next;			     /* Number of extensions in file */
+/* Multithreading */
+  int		nthreads;			/* Number of active threads */
   }	prefstruct;
 
   prefstruct		prefs;

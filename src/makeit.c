@@ -9,7 +9,7 @@
 *
 *	Contents:	main program.
 *
-*	Last modify:	26/11/2003
+*	Last modify:	14/07/2006
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
@@ -38,6 +38,9 @@
 #include	"psf.h"
 #include	"som.h"
 #include	"weight.h"
+#include	"xml.h"
+
+time_t	thetimet, thetimet2;
 
 /******************************** makeit *************************************/
 /*
@@ -51,7 +54,28 @@ void	makeit()
    catstruct		*imacat;
    tabstruct		*imatab;
    static time_t        thetime1, thetime2;
+   struct tm		*tm;
    int			i, nok, ntab, next;
+
+/* Install error logging */
+  error_installfunc(write_error);
+
+/* Processing start date and time */
+  thetimet = time(NULL);
+  tm = localtime(&thetimet);
+  sprintf(prefs.sdate_start,"%04d-%02d-%02d",
+        tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday);
+  sprintf(prefs.stime_start,"%02d:%02d:%02d",
+        tm->tm_hour, tm->tm_min, tm->tm_sec);
+
+  NFPRINTF(OUTPUT, "");
+  QPRINTF(OUTPUT, "----- %s %s started on %s at %s with %d thread%s\n\n",
+		BANNER,
+		MYVERSION,
+		prefs.sdate_start,
+		prefs.stime_start,
+		prefs.nthreads,
+		prefs.nthreads>1? "s":"");
 
 /* Initialize globals variables */
   initglob();
@@ -63,7 +87,9 @@ void	makeit()
   if (prefs.psf_flag)
     {
     NFPRINTF(OUTPUT, "Reading PSF information");
-    thepsf = psf_load(prefs.psf_name); 
+    thepsf = psf_load(prefs.psf_name[0]); 
+    if (prefs.dpsf_flag)
+      ppsf = psf_load(prefs.psf_name[1]);
  /*-- Need to check things up because of PSF context parameters */
     updateparamflags();
     useprefs();
@@ -140,6 +166,9 @@ void	makeit()
   NFPRINTF(OUTPUT, "Initializing catalog");
   initcat();
 
+/* Initialize XML data */
+  if (prefs.xml_flag || prefs.cat_type==ASCII_VO)
+    init_xml(next);
 
 /* Go through all images */
   nok = -1;
@@ -299,6 +328,11 @@ void	makeit()
       {
       psf_readcontext(thepsf, field);
       psf_init(thepsf);
+      if (prefs.dpsf_flag)
+        {
+        psf_readcontext(thepsf, dfield);
+        psf_init(thepsf); /*?*/
+        }
       }
 
 /*-- Copy field structures to static ones (for catalog info) */
@@ -342,6 +376,12 @@ void	makeit()
 
     reendcat();
 
+/* Update XML data */
+  if (prefs.xml_flag || prefs.cat_type==ASCII_VO)
+    update_xml(&thecat, dfield? dfield:field, field,
+	dwfield? dwfield:wfield, wfield);
+
+
 /*-- Close ASSOC routines */
     end_assoc(field);
 
@@ -355,7 +395,7 @@ void	makeit()
     if (dwfield)
       endfield(dwfield);
 
-    QPRINTF(OUTPUT, "Objects: detected %-8d / sextracted %-8d\n",
+    QPRINTF(OUTPUT, "Objects: detected %-8d / sextracted %-8d               \n",
 	thecat.ndetect, thecat.ntotal);
     }
 
@@ -365,8 +405,6 @@ void	makeit()
   free_cat(&imacat, 1);
 
   NFPRINTF(OUTPUT, "Closing files");
-
-  endcat();
 
 /* End CHECK-image processing */
   if (prefs.check_flag)
@@ -387,10 +425,31 @@ void	makeit()
     endgrowth();
 
   if (prefs.psf_flag)
-    psf_end(thepsf);
+    psf_end(thepsf,thepsfit); /*?*/
+
+  if (prefs.dpsf_flag)
+    psf_end(ppsf,ppsfit);
 
   if (FLAG(obj2.sprob))
     neurclose();
+
+/* Processing end date and time */
+  thetimet2 = time(NULL);
+  tm = localtime(&thetimet2);
+  sprintf(prefs.sdate_end,"%04d-%02d-%02d",
+	tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday);
+  sprintf(prefs.stime_end,"%02d:%02d:%02d",
+	tm->tm_hour, tm->tm_min, tm->tm_sec);
+  prefs.time_diff = difftime(thetimet2, thetimet);
+
+/* Write XML */
+  if (prefs.xml_flag)
+    write_xml(prefs.xml_name);
+
+  endcat((char *)NULL);
+
+  if (prefs.xml_flag || prefs.cat_type==ASCII_VO)
+    end_xml();
 
   return;
   }
@@ -414,12 +473,30 @@ void	initglob()
   return;
   }
 
-/*
-int matherr(struct exception *x)
-{
-printf("***MATH ERROR***: %d %s %f %f\n",
-x->type, x->name, x->arg1, x->retval);
-return (0);
-}
 
-*/
+/****** write_error ********************************************************
+PROTO	int	write_error(char *msg1, char *msg2)
+PURPOSE	Manage files in case of a catched error
+INPUT	a character string,
+	another character string
+OUTPUT	RETURN_OK if everything went fine, RETURN_ERROR otherwise.
+NOTES	-.
+AUTHOR	E. Bertin (IAP)
+VERSION	14/07/2006
+ ***/
+void	write_error(char *msg1, char *msg2)
+  {
+   char			error[MAXCHAR];
+
+  sprintf(error, "%s%s", msg1,msg2);
+  if (prefs.xml_flag)
+    write_xmlerror(prefs.xml_name, error);
+
+/* Also close existing catalog */
+  endcat(error);
+
+  end_xml();
+
+  return;
+  }
+

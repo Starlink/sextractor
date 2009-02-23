@@ -1,0 +1,12 @@
+*.a
+*.o
+*~
+.deps
+Makefile
+autom4te.cache
+config.*
+configure.lineno
+sex
+sextractor-tpx.spec
+sextractor.spec
+stamp-h1

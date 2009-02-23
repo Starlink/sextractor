@@ -178,9 +178,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign  src/fits/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --startree  src/fits/Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign  src/fits/Makefile
+	  $(AUTOMAKE) --startree  src/fits/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -324,6 +324,14 @@ install-data: install-data-am
 uninstall: uninstall-am
 
 install: $(REAL_INSTALL)
+install-svnversion:
+	$(mkdir_p) $(DESTDIR)$(STAR_MANIFEST_DIR)
+	@if test -n "$(SVNVERSION)"; then \
+	   if test -d "$(STAR_SOURCE_ROOT_DIR)"; then \
+	      cd $(STAR_SOURCE_ROOT_DIR) && \
+	      $(SVNVERSION) . > $(DESTDIR)$(STAR_MANIFEST_DIR)/starlink.version; \
+	   fi; \
+	fi
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
@@ -401,8 +409,8 @@ uninstall-am: uninstall-info-am
 	distclean-generic distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
 	install-data-am install-exec install-exec-am install-info \
-	install-info-am install-man install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	install-info-am install-man install-strip install-svnversion \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-info-am

@@ -10,14 +10,13 @@
 *
 *	Contents:	global type definitions.
 *
-*	Last modify:	11/11/99
-*                       20/03/00 (PWD): Added various members to
-*                                       support userradii function.
-*                       20/02/02 (PWD): Added ndfposx and ndfposy
-*                                       members.
-*	Last modify:	16/12/2002
-*                                (EB): 2.3.
-*	Last modify:	25/08/2005
+*	Last modify:	12/01/2006
+*
+*	History:
+*	                20/03/00 (PWD): Added various members to
+*	                                support userradii function.
+*	                20/02/02 (PWD): Added ndfposx and ndfposy
+*	                                members.
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
@@ -38,6 +37,11 @@
 #define		OBJ_ISO_PB	0x0020
 #define		OBJ_DOVERFLOW	0x0040
 #define		OBJ_OVERFLOW	0x0080
+
+/*----------------------------- weight flags --------------------------------*/
+
+#define		OBJ_WEIGHTZERO	0x0001
+#define		OBJ_DWEIGHTZERO 0x0002
 
 /*---------------------------- preanalyse flags -----------------------------*/
 
@@ -100,6 +104,7 @@ typedef struct
   int		*submap;			/* Pixel-index sub-map */
   int		subx,suby, subw,subh;		/* sub-image pos. and size */
   short		flag;				/* extraction flags */
+  BYTE		wflag;				/* weighted extraction flags */
   FLAGTYPE	imaflag[MAXFLAG];		/* flags from FLAG-images */
   BYTE		singuflag;			/* flags for singularities */
   int		imanflag[MAXFLAG];     		/* number of MOST flags */
@@ -404,6 +409,7 @@ typedef struct
 /*----- Misc. strings defining the extraction */
   char		prefs_name[MAXCHAR];			/* Prefs filename*/
   char		image_name[MAXCHAR];			/* image filename*/
+  char		psf_name[MAXCHAR];			/* PSF filename*/
   char		nnw_name[MAXCHAR];			/* NNW name */
   char		filter_name[MAXCHAR];			/* Filter name */
   char		soft_name[MAXCHAR];			/* Sextractor version*/

@@ -9,7 +9,7 @@
 *
 *	Contents:	Functions to handle the configuration file.
 *
-*	Last modify:	18/07/2005
+*	Last modify:	12/01/2006
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
@@ -60,11 +60,11 @@ void    readprefs(char *filename, char **argkey, char **argval, int narg)
 
   {
    FILE          *infile;
-   char          *cp, str[MAXCHAR], *keyword, *value, **dp;
+   char          *cp, str[MAXCHARL], *keyword, *value, **dp;
    int           i, ival, nkey, warn, argi, flagc, flagd, flage, flagz;
    float         dval;
 #ifndef	NO_ENVVAR
-   static char	value2[MAXCHAR],envname[MAXCHAR];
+   static char	value2[MAXCHARL],envname[MAXCHAR];
    char		*dolpos;
 #endif
 
@@ -105,7 +105,7 @@ void    readprefs(char *filename, char **argkey, char **argval, int narg)
         flagd = 0;
       }
     if (!flagc && !flagd)
-      if (flage || !fgets(str, MAXCHAR, infile))
+      if (flage || !fgets(str, MAXCHARL, infile))
         flagc=1;
 
     if (flagc)
@@ -408,6 +408,9 @@ void	useprefs()
 		|| FLAG(obj2.poserr_mx2w) || FLAG(obj2.winposerr_mx2w)
 		|| FLAG(obj2.npixw) || FLAG(obj2.fdnpixw)
 		|| FLAG(obj2.fwhmw);
+/* Default astrometric settings */
+  strcpy(prefs.coosys, "ICRS");
+  prefs.epoch = 2000.0;
 
 /*-------------------------------- Photometry ------------------------------*/
 
@@ -505,8 +508,11 @@ void	useprefs()
 		" are not in equal number");
 
 /*---------------------------- PSF-fitting ---------------------------------*/
-  if (FLAG(obj2.flux_psf))
+  if (FLAG(obj2.flux_psf) )
+    {
     prefs.psf_flag = 1;
+    prefs.dpsf_flag = (prefs.npsf_name>1);	/*?*/
+    }
   if (prefs.check_flag)
     for (i=0; i<prefs.ncheck_type; i++)
       if (prefs.check_type[i] == CHECK_SUBPSFPROTOS

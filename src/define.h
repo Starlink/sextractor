@@ -10,12 +10,10 @@
 *
 *	Contents:	global definitions.
 *
-*	Last modify:	24/09/2001
-*	Last modify:	08/02/2001
-*                       20/03/2000 (PWD): Added NRAD define.
-*	Last modify:	13/12/2002
-*                                  (EB) 2.3.
-*	Last modify:	23/09/2005
+*	Last modify:	12/07/2006
+*
+*	History:
+*	                20/03/2000 (PWD): Added NRAD define.
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
@@ -23,7 +21,8 @@
 /* Check if we are using a configure script here */
 #ifndef HAVE_CONFIG_H
 #define		VERSION		"2.x"
-#define		DATE		"2002-12-13"
+#define		DATE		"2006-01-12"
+#define		THREADS_NMAX	16		/* max. number of threads */
 #endif
 
 /*------------------------ what, who, when and where ------------------------*/
@@ -40,9 +39,11 @@
 /*--------------------------- Internal constants ----------------------------*/
 
 #define	BIG			1e+30		/* a huge number */
+#define	LESSBIG			1e+25		/* a somewhat smaller number */
 #define	DATA_BUFSIZE		262144		/* data buffer size */
 #define	MARGIN_SCALE		2.0		/* Margin / object height */ 
 #define	MAXCHAR			512		/* max. number of characters */
+#define	MAXCHARL		16384		/* max.nb of chars in strlist*/
 #define	MAXCHECK		32		/* max. # of CHECKimages */
 #define	MAXDEBAREA		3		/* max. area for deblending */
 #define	MAXFLAG			4		/* max. # of FLAG-images */
@@ -51,9 +52,10 @@
 #define	MAXNASSOC		32		/* max. number of assoc. */
 #define	MAXPICSIZE		1048576		/* max. image size */
 #define	NISO			8		/* number of isophotes */
-#define	OUTPUT			stderr		/* where all msgs are sent */
-#define PSF_NPSFMAX		11		/* Max number of fitted PSFs */
+#define	OUTPUT			stdout		/* where all msgs are sent */
+#define PSF_NPSFMAX		9		/* Max number of fitted PSFs */
 
+/* PWD: */
 #define NRAD                    16              /* number of radii */
 
 #ifndef PI

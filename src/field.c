@@ -45,7 +45,7 @@ picstruct	*newfield(char *filename, int flags, int nok)
    catstruct	*cat;
    tabstruct	*tab;
    OFF_T	mefpos = 0;		/* To avoid gcc -Wall warnings */
-   int		nok2, ntab;
+    int		nok2, ntab, margin;
    int          skip;
 
 /* Move to nok'th valid FITS image extension */

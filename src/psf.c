@@ -539,13 +539,13 @@ void	psf_fit(psfstruct *psf, picstruct *field, picstruct *wfield,
           var = covmat;
 /*---- First, the error on the flux estimate */      
           fluxerr = sqrt(*var)>0.0?  sqrt(*var):999999.0;
-          //if (flux[j]<12*fluxerr && j>0)
-          //  npsfmax--,flux[j]=0;
+          /*if (flux[j]<12*fluxerr && j>0)
+            npsfmax--,flux[j]=0; */
           if (flux[j]<12*fluxerr && j>0)
                  {
                    flux[j]=0,kill++,npsfmax--;
-                   //if(j==npsfmax-1)
-                   //  kill++;             
+                   /*if(j==npsfmax-1)
+                     kill++;             */
                  } 
         }
       if (npsfflag)

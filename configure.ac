@@ -140,6 +140,13 @@ if test -n "$myldflags"; then
 LDFLAGS="$myldflags"
 fi
 
+# Except for GCC 4.1 there is an optimization bug, so don't let anything
+# except -O and -O0 through.
+if test "$GCC" = "yes"; then
+   CFLAGS="`echo $CFLAGS | sed 's/\-O[[1-9]]//g'`"
+   AC_MSG_RESULT([Warning CFLAGS optimization may have been altered])
+fi
+
 # Display compiler and linker flags
 AC_MSG_RESULT([I will compile using:  $CC $CFLAGS])
 AC_MSG_RESULT([I will link using:     $CC $LDFLAGS $LIBS])

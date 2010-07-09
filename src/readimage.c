@@ -643,6 +643,16 @@ void	readimagehead(picstruct *field)
           sprintf(str, "PC%03d%03d", l+1, j+1);
           as->pc[l*naxis+j] = FITSTOF(str, l==j?1.0:0.0);
           }
+/*  PWD: change here. */
+    else if (fitsnfind(buf, "PC1_1", n))
+/*---- ...If new style PC keywords exist, use them for the linear mapping
+ * terms... */
+      for (l=0; l<naxis; l++)
+        for (j=0; j<naxis; j++)
+          {
+          sprintf(str, "PC%d_%d", l+1, j+1);
+          as->pc[l*naxis+j] = FITSTOF(str, l==j?1.0:0.0);
+          }
     else
       {
 /*---- ...otherwise take the obsolete CROTA2 parameter */

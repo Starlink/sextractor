@@ -9,7 +9,7 @@
 *
 *	Contents:	functions for handling FITS keywords.
 *
-*	Last modify:	17/11/2004
+*	Last modify:	12/06/2007
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
@@ -38,8 +38,8 @@ NOTES	For all keywords except commentary ones (like COMMENT, HISTORY or
 	blank), it is checked that they do not exist already.
 	Enough memory should be provided for the FITS header to contain one
 	more line of 80 char.
-AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	13/06/2004
+AUTHOR	E. Bertin (IAP & Leiden observatory) C. Marmo (IAP)
+VERSION	13/06/2007
  ***/
 int	fitsadd(char *fitsbuf, char *keyword, char *comment)
 
@@ -76,6 +76,26 @@ int	fitsadd(char *fitsbuf, char *keyword, char *comment)
       else
         return RETURN_ERROR;
       }
+/*-- Special case of PCOUNT/GCOUNT parameters */
+    if (!strncmp(keyword, "PCOUNT", 6))
+      {
+      headpos=fitsfind(fitsbuf, "NAXIS   ");
+      sscanf(fitsbuf+80*headpos, "NAXIS   =                    %d", &n);
+      if (headpos>0)
+        headpos+=(n+1);
+      else
+        return RETURN_ERROR;
+      }
+    if (!strncmp(keyword, "GCOUNT", 6))
+      {
+      headpos=fitsfind(fitsbuf, "NAXIS   ");
+      sscanf(fitsbuf+80*headpos, "NAXIS   =                    %d", &n);
+      if (headpos>0)
+        headpos+=(n+2);
+      else
+        return RETURN_ERROR;
+      }
+
     key_ptr = fitsbuf+80*headpos;
     memmove(key_ptr+80, key_ptr, 80*(headpos2-headpos+1));
 
@@ -88,7 +108,6 @@ int	fitsadd(char *fitsbuf, char *keyword, char *comment)
     else
       sprintf(str, "%-8.8s=                        %-47.47s",
 	      keyword, " ");
-
     memcpy(key_ptr, str, 80);
     }
 
@@ -162,7 +181,7 @@ OUTPUT	RETURN_OK if something was found, RETURN_ERROR otherwise.
 NOTES	-.
 AUTHOR	E. Bertin (IAP),
         E.R. Deul - Handling of NaN
-VERSION	04/08/2004
+VERSION	04/06/2007
  ***/
 int	fitspick(char *fitsline, char *keyword, void *ptr, h_type *htype,
 		t_type *ttype, char *comment)
@@ -233,15 +252,9 @@ int	fitspick(char *fitsline, char *keyword, void *ptr, h_type *htype,
     {
     for (i=j; i<80 && fitsline[i]!=(char)'/' && fitsline[i]!=(char)'.'; i++);
 /*-- Handle floats*/
-    if (i==80)
+    if (fitsline[i]==(char)'.') 
       {
-      *((int *)ptr) = 0;
-      *htype = H_INT;
-      *ttype = T_LONG;
-      }
-    else if (fitsline[i]==(char)'.') 
-      {
-      fixexponent(fitsline+j);
+      fixexponent(fitsline);
       *((double *)ptr) = atof(fitsline+j);
       *htype = H_EXPO;
       *ttype = T_DOUBLE;
@@ -426,7 +439,7 @@ OUTPUT	RETURN_OK if the keyword was found, RETURN_ERROR otherwise.
 NOTES	The buffer MUST contain the ``END     '' keyword.
 	The keyword must already exist in the buffer (use fitsadd()).
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	17/11/2004
+VERSION	21/09/2006
  ***/
 int	fitswrite(char *fitsbuf, char *keyword, void *ptr, h_type htype,
 		t_type ttype)
@@ -457,7 +470,8 @@ int	fitswrite(char *fitsbuf, char *keyword, void *ptr, h_type htype,
 				*(double *)ptr: *(float *)ptr);
 			break;
 
-    case H_BOOL:	if (((ttype==T_SHORT)? *(short *)ptr : *(LONG *)ptr))
+    case H_BOOL:	if ((ttype==T_SHORT)? *(short *)ptr :
+				((ttype==T_BYTE)? *(BYTE *)ptr : *(LONG *)ptr))
 			  sprintf(str, "                   T");
 			else
 			  sprintf(str, "                   F");
@@ -538,7 +552,7 @@ int	fitswrite(char *fitsbuf, char *keyword, void *ptr, h_type htype,
   if (posoff==10 && i && (l=69-strlen(str))>0)
     {
     strncpy(str2, cstr, i);
-    str2[i+1] = 0;
+    str2[i] = 0;
     strcat(str, " ");
     strncat(str, str2, l);
     }
@@ -568,7 +582,7 @@ void	fixexponent(char *s)
    int	i;
 
   s += 9;
-  for (i=71; (int)*s != '/' && i--; s++)
+  for (i=71; ((int)*s) && (int)*s != '/' && i--; s++)
     if ((int)*s == 'D' || (int)*s == 'd')
       *s = (char)'E';
 

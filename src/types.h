@@ -52,7 +52,6 @@
 /*--------------------------------- typedefs --------------------------------*/
 typedef	unsigned char	BYTE;			/* a byte */
 typedef	unsigned short	USHORT;			/* 0 to 65535 integers */
-typedef unsigned int	FLAGTYPE;		/* flag type */
 typedef	char		pliststruct;		/* Dummy type for plist */
 
 typedef	int		LONG;

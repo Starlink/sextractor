@@ -1,18 +1,30 @@
 /*
- 				sexhead.h
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				sexhead.h
 *
-*	Part of:	SExtractor
+* Keyword list for FITS-LDAC catalogue headers.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	header structure and templates for catalog data.
+*	This file part of:	SExtractor
 *
-*	Last modify:	13/12/2004
+*	Copyright:		(C) 1996-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		11/10/2010
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 keystruct	headkey[] = {
   {"FITSFILE", "File name of the analysed image",
@@ -50,7 +62,7 @@ keystruct	headkey[] = {
   {"SEXNNWF ", "S/G classification NNW filename",
 	thecat.nnw_name, H_STRING, T_STRING, "%-18s"},
   {"SEXGAIN ", "Gain used (e-/ADU)",
-	&prefs.gain, H_EXPO, T_DOUBLE, "%6.2f"},
+	&thefield2.gain, H_EXPO, T_DOUBLE, "%6.2f"},
   {"SEXFLTR ", "Detection filtering activated (flag)",
 	&prefs.filter_flag, H_BOOL, T_LONG, "%1s"},
   {"SEXFILTN", "Filter filename",
@@ -88,7 +100,7 @@ keystruct	headkey[] = {
   {"SEXPETP2", "Parameter #2 used for Petrosian magnitudes",
 	&prefs.autoparam[1], H_FLOAT, T_DOUBLE, "%4.1f"},
   {"SEXSATLV", "Saturation level used for flagging (ADU)",
-	&prefs.satur_level, H_EXPO, T_DOUBLE, "%-13G"},
+	&thefield2.satur_level, H_EXPO, T_DOUBLE, "%-13G"},
   {"SEXMGZPT", "Zero-point used for magnitudes",
 	&prefs.mag_zeropoint, H_FLOAT, T_DOUBLE, "%8.4f"},
   {"SEXMGGAM", "Gamma used for photographic photometry",

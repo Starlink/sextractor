@@ -1,36 +1,50 @@
- /*
- 				define.h
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				define.h
 *
-*	Part of:	SExtractor
+* Global definitions
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	global definitions.
+*	This file part of:	SExtractor
 *
-*	Last modify:	12/07/2006
+*	Copyright:		(C) 1993-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		12/04/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 /* Check if we are using a configure script here */
 #ifndef HAVE_CONFIG_H
 #define		VERSION		"2.x"
-#define		DATE		"2006-01-12"
-#define		THREADS_NMAX	16		/* max. number of threads */
+#define		DATE		"2009-03-31"
+#define		THREADS_NMAX	1024		/* max. number of threads */
 #endif
 
 /*------------------------ what, who, when and where ------------------------*/
 
 #define		BANNER		"SExtractor"
-#define         EXECUTABLE      "sex"
 #define		MYVERSION	VERSION
-#define		COPYRIGHT	"Emmanuel BERTIN (bertin@iap.fr)"
-#define		WEBSITE		"http://terapix.iap.fr/soft/sextractor"
-#define	       	MAILINGLIST	"sextractor@iap.fr"
-#define	       	MAILINGLISTREQ	"sextractor-request@iap.fr"
-#define		INSTITUTE	"TERAPIX team at IAP  http://terapix.iap.fr"
+#define		EXECUTABLE	"sex"
+#define         COPYRIGHT       "2012 IAP/CNRS/UPMC"
+#define		DISCLAIMER	BANNER " comes with ABSOLUTELY NO WARRANTY\n" \
+		"You may redistribute copies of " BANNER "\n" \
+		"under the terms of the GNU General Public License."
+#define		AUTHORS		"Emmanuel BERTIN <bertin@iap.fr>"
+#define		WEBSITE		"http://astromatic.net/software/sextractor"
+#define		INSTITUTE	"IAP  http://www.iap.fr"
 
 /*--------------------------- Internal constants ----------------------------*/
 
@@ -38,9 +52,9 @@
 #define	LESSBIG			1e+25		/* a somewhat smaller number */
 #define	DATA_BUFSIZE		262144		/* data buffer size */
 #define	MARGIN_SCALE		2.0		/* Margin / object height */ 
+#define	MARGIN_OFFSET		4.0		/* Margin offset (pixels) */ 
 #define	MAXCHAR			512		/* max. number of characters */
 #define	MAXCHARL		16384		/* max.nb of chars in strlist*/
-#define	MAXCHECK		32		/* max. # of CHECKimages */
 #define	MAXDEBAREA		3		/* max. area for deblending */
 #define	MAXFLAG			4		/* max. # of FLAG-images */
 #define	MAXIMAGE		2		/* max. # of input images */
@@ -48,12 +62,13 @@
 #define	MAXNASSOC		32		/* max. number of assoc. */
 #define	MAXPICSIZE		1048576		/* max. image size */
 #define	NISO			8		/* number of isophotes */
-#define	OUTPUT			stdout		/* where all msgs are sent */
+#define	OUTPUT			stderr		/* where all msgs are sent */
 #define PSF_NPSFMAX		9		/* Max number of fitted PSFs */
 
 #ifndef PI
 #define	PI			3.1415926535898	/* never met before? */
 #endif
+#define	DEG			(PI/180.0)	/* 1 deg in radians */
 
 /* NOTES:
  *
@@ -124,7 +139,8 @@
 
 /*------------------------------- Other Macros -----------------------------*/
 
-#define	DEXP(x)	exp(2.30258509299*(x))	/* 10^x */
+#define	DEXP(x)		exp(2.30258509299*(x))		/* 10^x */
+#define	DEXPF(x)	expf(2.30258509299f*(x))	/* 10^x */
 
 #define QFREAD(ptr, size, afile, fname) \
 		if (fread(ptr, (size_t)(size), (size_t)1, afile)!=1) \
@@ -144,31 +160,62 @@
 		  error(EXIT_FAILURE,"*Error*: file position unknown in ", \
 			fname)
 
-#define	QCALLOC(ptr, typ, nel) \
-		{if (!(ptr = (typ *)calloc((size_t)(nel),sizeof(typ)))) \
-		  error(EXIT_FAILURE, "Not enough memory for ", \
-			#ptr " (" #nel " elements) !");;}
-
-#define	QMALLOC(ptr, typ, nel) \
-		{if (!(ptr = (typ *)malloc((size_t)(nel)*sizeof(typ)))) \
-		  error(EXIT_FAILURE, "Not enough memory for ", \
-			#ptr " (" #nel " elements) !");;}
-
 #define	QFREE(ptr) \
 		{free(ptr); \
 		ptr = NULL;}
 
+#define	QCALLOC(ptr, typ, nel) \
+		{if (!(ptr = (typ *)calloc((size_t)(nel),sizeof(typ)))) \
+		   { \
+		   sprintf(gstr, #ptr " (" #nel "=%lld elements) " \
+			"at line %d in module " __FILE__ " !", \
+			(size_t)(nel)*sizeof(typ), __LINE__); \
+		   error(EXIT_FAILURE, "Could not allocate memory for ", gstr);\
+                   }; \
+                 }
+
+#define	QMALLOC(ptr, typ, nel) \
+		{if (!(ptr = (typ *)malloc((size_t)(nel)*sizeof(typ)))) \
+		   { \
+		   sprintf(gstr, #ptr " (" #nel "=%lld elements) " \
+			"at line %d in module " __FILE__ " !", \
+			(size_t)(nel)*sizeof(typ), __LINE__); \
+		   error(EXIT_FAILURE, "Could not allocate memory for ", gstr);\
+                   }; \
+                 }
+
+#define	QMALLOC16(ptr, typ, nel) \
+		{if (posix_memalign((void **)&ptr, 16, (size_t)(nel)*sizeof(typ))) \
+		   { \
+		   sprintf(gstr, #ptr " (" #nel "=%lld elements) " \
+			"at line %d in module " __FILE__ " !", \
+			(size_t)(nel)*sizeof(typ), __LINE__); \
+		   error(EXIT_FAILURE, "Could not allocate memory for ", gstr);\
+                   }; \
+                 }
+
 #define	QREALLOC(ptr, typ, nel) \
-		{if (!(ptr = (typ *)realloc(ptr, (size_t)(nel)*sizeof(typ)))) \
-		   error(EXIT_FAILURE, "Not enough memory for ", \
-			#ptr " (" #nel " elements) !");;}
+		{if (!(ptr = (typ *)realloc(ptr, (size_t)(nel)*sizeof(typ))))\
+		   { \
+		   sprintf(gstr, #ptr " (" #nel "=%lld elements) " \
+			"at line %d in module " __FILE__ " !", \
+			(size_t)(nel)*sizeof(typ), __LINE__); \
+		   error(EXIT_FAILURE, "Could not allocate memory for ", gstr);\
+                   }; \
+                 }
 
 #define QMEMCPY(ptrin, ptrout, typ, nel) \
 		{if (ptrin) \
                   {if (!(ptrout = (typ *)malloc((size_t)(nel)*sizeof(typ)))) \
-                    error(EXIT_FAILURE, "Not enough memory for ", \
-                        #ptrout " (" #nel " elements) !"); \
-                   memcpy(ptrout, ptrin, (size_t)(nel)*sizeof(typ));};}
+		     { \
+		     sprintf(gstr, #ptrout " (" #nel "=%lld elements) " \
+			"at line %d in module " __FILE__ " !", \
+			(size_t)(nel)*sizeof(typ), __LINE__); \
+		     error(EXIT_FAILURE,"Could not allocate memory for ",gstr);\
+                     }; \
+                   memcpy(ptrout, ptrin, (size_t)(nel)*sizeof(typ)); \
+                   }; \
+                 }
 
 #define	RINT(x)	(int)(floor(x+0.5))
 

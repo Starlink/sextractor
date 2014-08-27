@@ -1,18 +1,31 @@
 /*
- 				fitshead.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				fitshead.c
 *
-*	Part of:	The LDAC Tools
+* General functions for handling FITS file headers
 *
-*	Author:		E.BERTIN, DeNIS/LDAC
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	general functions for handling FITS file headers.
+*	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Last modify:	25/09/2004
+*	Copyright:		(C) 1995-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		29/08/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef	HAVE_CONFIG_H
 #include "config.h"
@@ -26,7 +39,7 @@
 #include	"fitscat.h"
 
 extern	char	histokeys[][12];
-const int	t_size[] = {1, 2, 4, 4, 8, 1};	/* size in bytes per t_type */
+const int	t_size[] = {1, 2, 4, 8, 4, 8, 1};/* size in bytes per t_type */
 
 /******* get_head *************************************************************
 PROTO	int get_head(tabstruct *tab)
@@ -88,7 +101,7 @@ INPUT	pointer to catstruct.
 OUTPUT	-.
 NOTES	-.
 AUTHOR	E. Bertin (IAP)
-VERSION	25/09/2004
+VERSION	03/06/2012
  ***/
 void	readbasic_head(tabstruct *tab)
 
@@ -156,7 +169,7 @@ void	readbasic_head(tabstruct *tab)
 	1 : 0;
 
 /* Custom basic FITS parameters */
-  tab->bitsgn = 1;
+  tab->bitsgn = (tab->bitpix==BP_BYTE) ? 0 : 1;
   fitsread(tab->headbuf, "BITSGN  ", &tab->bitsgn, H_INT, T_LONG);
 
   if (fitsread(tab->headbuf, "IMAGECOD", str, H_STRING, T_STRING)==RETURN_OK)
@@ -187,7 +200,7 @@ OUTPUT	RETURN_OK if a binary table was found and mapped, RETURN_ERROR
 	otherwise.
 NOTES	-.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	25/09/2004
+VERSION	20/07/2010
  ***/
 int	readbintabparam_head(tabstruct *tab)
 
@@ -260,6 +273,7 @@ int	readbintabparam_head(tabstruct *tab)
       case T_BYTE:
       case T_SHORT:
       case T_LONG:
+      case T_LONGLONG:
         key->htype = H_INT;
         break;
       case T_FLOAT:
@@ -270,7 +284,7 @@ int	readbintabparam_head(tabstruct *tab)
         key->htype = H_STRING;
         break;
       default:
-        error(EXIT_FAILURE, "*Internal Error*: Unkwown T_TYPE for ", str);
+        error(EXIT_FAILURE, "*Error*: Unknown TFORM in ", cat->filename);
       }
 
 /*--handle the special case of multimensional arrays*/
@@ -315,7 +329,7 @@ INPUT	Table structure.
 OUTPUT	RETURN_OK if tab is a binary table, or RETURN_ERROR otherwise.
 NOTES	The headbuf pointer in the tabstruct might be reallocated.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	25/09/2004
+VERSION	11/06/2007
  ***/
 int	update_head(tabstruct *tab)
 
@@ -353,13 +367,13 @@ int	update_head(tabstruct *tab)
     }
 
 /*First, remove all existing TTYPE, TFORM, etc...*/
-  fitsremove(tab->headbuf, "TTYPE???");
-  fitsremove(tab->headbuf, "TFORM???");
-  fitsremove(tab->headbuf, "TUNIT???");
-  fitsremove(tab->headbuf, "TZERO???");
-  fitsremove(tab->headbuf, "TSCAL???");
-  fitsremove(tab->headbuf, "TDIM???");
-  fitsremove(tab->headbuf, "TDISP???");
+  removekeywordfrom_head(tab, "TTYPE???");
+  removekeywordfrom_head(tab, "TFORM???");
+  removekeywordfrom_head(tab, "TUNIT???");
+  removekeywordfrom_head(tab, "TZERO???");
+  removekeywordfrom_head(tab, "TSCAL???");
+  removekeywordfrom_head(tab, "TDIM???");
+  removekeywordfrom_head(tab, "TDISP???");
 
 
 /*Change NAXIS1 in order to take into account changes in width*/
@@ -465,8 +479,8 @@ PURPOSE	Update a FITS header to make it "primary" (not extension)
 INPUT	Table structure.
 OUTPUT	RETURN_OK if tab header was already primary, or RETURN_ERROR otherwise.
 NOTES	-.
-AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	08/05/2002
+AUTHOR	E. Bertin (IAP) C. Marmo (IAP)
+VERSION	30/08/2011
  ***/
 int	prim_head(tabstruct *tab)
 
@@ -475,10 +489,16 @@ int	prim_head(tabstruct *tab)
     return RETURN_ERROR;
   if (!strncmp(tab->headbuf, "XTENSION",8))
       {
-      strncpy(tab->headbuf, "SIMPLE  =                    T  "
+      strncpy(tab->headbuf, "SIMPLE  =                    T "
 	"/ This is a FITS file                            ", 80);
+      removekeywordfrom_head(tab, "PCOUNT");      
+      removekeywordfrom_head(tab, "GCOUNT");      
+      removekeywordfrom_head(tab, "TFIELDS");      
+      removekeywordfrom_head(tab, "EXTNAME");      
+      *tab->extname = '\0';
       return RETURN_ERROR;
       }
+
   return RETURN_OK;
   }
 
@@ -490,8 +510,8 @@ INPUT	Table structure.
 OUTPUT	RETURN_OK if tab header was already extension, or RETURN_ERROR
 	otherwise.
 NOTES	-.
-AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	08/05/2002
+AUTHOR	E. Bertin (IAP & Leiden observatory) C. Marmo (IAP)
+VERSION	20/06/2007
  ***/
 int	ext_head(tabstruct *tab)
 
@@ -502,6 +522,15 @@ int	ext_head(tabstruct *tab)
       {
       strncpy(tab->headbuf, "XTENSION= 'IMAGE   '           "
 		"/ Image extension                                ", 80);
+/* fitsverify 4.13 (CFITSIO V3.002) return an error
+   if EXTEND are in an extension header (20/06/2007)*/
+      removekeywordfrom_head(tab, "EXTEND");      
+/* fitsverify 4.13 (CFITSIO V3.002) return an error
+   if PCOUNT and GCOUNT are not in the extension header (23/05/2007) */
+      addkeywordto_head(tab, "PCOUNT  ", "required keyword; must = 0");      
+      addkeywordto_head(tab, "GCOUNT  ", "required keyword; must = 1");
+      fitswrite(tab->headbuf,"PCOUNT  ", &tab->pcount, H_INT, T_LONG);     
+      fitswrite(tab->headbuf,"GCOUNT  ", &tab->gcount, H_INT, T_LONG);
       return RETURN_ERROR;
       }
 
@@ -564,6 +593,36 @@ int	addkeywordto_head(tabstruct *tab, char *keyword, char *comment)
   }
 
 
+/****** removekeywordfrom_head ************************************************
+PROTO	int removekeywordfrom_head(tabstruct *tab, char *keyword)
+PURPOSE	Remove a keyword from a table header.
+INPUT	Table structure,
+	String containing the keyword.
+OUTPUT	RETURN_OK if the keyword was found, RETURN_ERROR otherwise..
+NOTES	The headbuf pointer in the tabstruct might be reallocated.
+        '?' wildcard allowed; Don't remove the ``END'' keyword with this!!!
+AUTHOR	E. Bertin (IAP)
+VERSION	11/06/2007
+ ***/
+int	removekeywordfrom_head(tabstruct *tab, char *keyword)
+
+  {
+   int	nb;
+
+  if (fitsremove(tab->headbuf, keyword) == RETURN_OK)
+    {
+    if ((nb=fitsfind(tab->headbuf, "END     ")/(FBSIZE/80)+1) < tab->headnblock)
+      {
+      tab->headnblock = nb;
+      QREALLOC(tab->headbuf, char, tab->headnblock*FBSIZE);
+      }
+    return RETURN_OK;
+    }
+  else
+    return RETURN_ERROR;
+  }
+
+
 /****** tformof ***************************************************************
 PROTO	int tformof(char *str, t_type ttype, int n)
 PURPOSE	Return the ``TFORM'' string corresponding to a t_type
@@ -574,7 +633,7 @@ INPUT	a char pointer (to be filled with the T_FORM string),
 OUTPUT	RETURN_OK if everything went as expected, or RETURN_ERROR otherwise.
 NOTES	-.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	08/02/96
+VERSION	28/10/2009
  ***/
 int	tformof(char *str, t_type ttype, int n)
 
@@ -588,6 +647,8 @@ int	tformof(char *str, t_type ttype, int n)
     case T_SHORT:	t = 'I';
 			break;
     case T_LONG:	t = 'J';
+			break;
+    case T_LONGLONG:	t = 'K';
 			break;
     case T_FLOAT:	t = 'E';
 			break;
@@ -610,8 +671,8 @@ PURPOSE	Return the size of a binary-table field from its ``TFORM''.
 INPUT	TFORM string (see the FITS documentation).
 OUTPUT	size in bytes, or RETURN_ERROR if the TFORM is unknown.
 NOTES	-.
-AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	08/02/96
+AUTHOR	E. Bertin (IAP)
+VERSION	10/11/2010
  ***/
 int	tsizeof(char *str)
 
@@ -620,18 +681,19 @@ int	tsizeof(char *str)
    char	*str2;
 
   str2 = str;
-  if (!(n = strtol(str, &str2, 10)))
+  n = strtol(str, &str2, 10);
+  if (str2==str)
     n = 1;
 
   switch ((int)*str2)
     {
-    case 'L': case 'B': case 'A':	return	n;
-    case 'X':				return	(n-1)/8+1;
-    case 'I':				return	2*n;
-    case 'J': case 'E':			return	4*n;
-    case 'C': case 'D': case 'P':	return	8*n;
-    case 'M':				return	16*n;
-    default:				return	RETURN_ERROR;
+    case 'L': case 'B': case 'A':		return	n;
+    case 'X':					return	(n-1)/8+1;
+    case 'I':					return	2*n;
+    case 'J': case 'E':				return	4*n;
+    case 'C': case 'D': case 'K': case 'P':	return	8*n;
+    case 'M':					return	16*n;
+    default:					return	RETURN_ERROR;
     }
 
   }
@@ -643,8 +705,8 @@ PURPOSE	Give the ``t_type'' of a binary-table field from its ``TFORM''.
 INPUT	TFORM string (see the FITS documentation).
 OUTPUT	size in bytes, or RETURN_ERROR if the TFORM is unknown.
 NOTES	-.
-AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	17/03/2002
+AUTHOR	E. Bertin (IAP)
+VERSION	29/08/2012
  ***/
 t_type	ttypeof(char *str)
 
@@ -658,6 +720,7 @@ t_type	ttypeof(char *str)
     case 'L': case 'B': case 'X':	return	T_BYTE;
     case 'I':				return	T_SHORT;
     case 'J':				return	T_LONG;
+    case 'K':				return	T_LONGLONG;
     case 'E':				return	T_FLOAT;
     case 'D':				return	T_DOUBLE;
     case 'A':				return	T_STRING;

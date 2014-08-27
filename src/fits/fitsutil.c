@@ -1,18 +1,31 @@
 /*
- 				fitsutil.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				fitsutil.c
 *
-*	Part of:	The LDAC Tools
+* Handle FITS header keywords.
 *
-*	Author:		E.BERTIN, DeNIS/LDAC
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	functions for handling FITS keywords.
+*	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Last modify:	17/11/2004
+*	Copyright:		(C) 1995-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		30/11/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include	"config.h"
@@ -38,8 +51,8 @@ NOTES	For all keywords except commentary ones (like COMMENT, HISTORY or
 	blank), it is checked that they do not exist already.
 	Enough memory should be provided for the FITS header to contain one
 	more line of 80 char.
-AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	13/06/2004
+AUTHOR	E. Bertin (IAP & Leiden observatory) C. Marmo (IAP)
+VERSION	13/06/2007
  ***/
 int	fitsadd(char *fitsbuf, char *keyword, char *comment)
 
@@ -76,6 +89,26 @@ int	fitsadd(char *fitsbuf, char *keyword, char *comment)
       else
         return RETURN_ERROR;
       }
+/*-- Special case of PCOUNT/GCOUNT parameters */
+    if (!strncmp(keyword, "PCOUNT", 6))
+      {
+      headpos=fitsfind(fitsbuf, "NAXIS   ");
+      sscanf(fitsbuf+80*headpos, "NAXIS   =                    %d", &n);
+      if (headpos>0)
+        headpos+=(n+1);
+      else
+        return RETURN_ERROR;
+      }
+    if (!strncmp(keyword, "GCOUNT", 6))
+      {
+      headpos=fitsfind(fitsbuf, "NAXIS   ");
+      sscanf(fitsbuf+80*headpos, "NAXIS   =                    %d", &n);
+      if (headpos>0)
+        headpos+=(n+2);
+      else
+        return RETURN_ERROR;
+      }
+
     key_ptr = fitsbuf+80*headpos;
     memmove(key_ptr+80, key_ptr, 80*(headpos2-headpos+1));
 
@@ -88,7 +121,6 @@ int	fitsadd(char *fitsbuf, char *keyword, char *comment)
     else
       sprintf(str, "%-8.8s=                        %-47.47s",
 	      keyword, " ");
-
     memcpy(key_ptr, str, 80);
     }
 
@@ -162,7 +194,7 @@ OUTPUT	RETURN_OK if something was found, RETURN_ERROR otherwise.
 NOTES	-.
 AUTHOR	E. Bertin (IAP),
         E.R. Deul - Handling of NaN
-VERSION	04/08/2004
+VERSION	30/11/2012
  ***/
 int	fitspick(char *fitsline, char *keyword, void *ptr, h_type *htype,
 		t_type *ttype, char *comment)
@@ -184,8 +216,19 @@ int	fitspick(char *fitsline, char *keyword, void *ptr, h_type *htype,
 	&& strncmp(keyword, "HIERARCH", 8)
 	&& strncmp(keyword, "        ", 8))
       return RETURN_ERROR;
-    memcpy(comment, fitsline+9, 71);
-    comment[71] = 0;
+    fptr = fitsline+9;
+    lastspace = NULL;
+    for(i=71; i-- && (c=*(fptr++));)
+      if ((int)c >= ' ')
+	{
+        *(comment++) = c;
+        if (c > ' ')
+          lastspace = comment;
+        }
+    if (lastspace)
+      *lastspace = '\0';
+    else
+      *comment = '\0';
     *htype = H_COMMENT;
     *ttype = T_STRING;
     return RETURN_OK;
@@ -233,25 +276,19 @@ int	fitspick(char *fitsline, char *keyword, void *ptr, h_type *htype,
     {
     for (i=j; i<80 && fitsline[i]!=(char)'/' && fitsline[i]!=(char)'.'; i++);
 /*-- Handle floats*/
-    if (i==80)
-      {
-      *((int *)ptr) = 0;
-      *htype = H_INT;
-      *ttype = T_LONG;
-      }
-    else if (fitsline[i]==(char)'.') 
-      {
-      fixexponent(fitsline+j);
-      *((double *)ptr) = atof(fitsline+j);
-      *htype = H_EXPO;
-      *ttype = T_DOUBLE;
-      }
-    else
+    if (i==80 || fitsline[i]!=(char)'.') 
 /*---- Handle ints*/
       {
       *((int *)ptr) = atoi(fitsline+j);
       *htype = H_INT;
       *ttype = T_LONG;
+      }
+    else
+      {
+      fixexponent(fitsline);
+      *((double *)ptr) = atof(fitsline+j);
+      *htype = H_EXPO;
+      *ttype = T_DOUBLE;
       }
     }
 
@@ -261,7 +298,7 @@ int	fitspick(char *fitsline, char *keyword, void *ptr, h_type *htype,
   for (fptr = fitsline + (i=j); i<80; i++)
     {
     if (*fptr == (char)'\'')
-      toggle^=toggle;
+      toggle ^= 1;
     if (*(fptr++) == (char)'/' && !toggle)
       {
       while (++i<80 && *fptr<=' ')
@@ -297,7 +334,7 @@ INPUT	pointer to the FITS buffer,
 OUTPUT	RETURN_OK if the keyword was found, RETURN_ERROR otherwise.
 NOTES	The buffer MUST contain the ``END     '' keyword.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	04/08/2004
+VERSION	13/06/2012
  ***/
 int	fitsread(char *fitsbuf, char *keyword, void *ptr, h_type htype,
 		t_type ttype)
@@ -315,10 +352,14 @@ int	fitsread(char *fitsbuf, char *keyword, void *ptr, h_type htype,
 
   switch(htype)
     {
-    case H_INT:		if (ttype == T_SHORT)
-			  sscanf(str+10, "    %hd", (short *)ptr);
-			else
+    case H_INT:		if (ttype == T_LONG)
 			  sscanf(str+10, "    %d", (LONG *)ptr);
+			else if (ttype == T_SHORT)
+			  sscanf(str+10, "    %hd", (short *)ptr);
+#ifdef HAVE_LONG_LONG_INT
+			else
+			  sscanf(str+10, "    %lld", (SLONGLONG *)ptr);
+#endif
 			break;
 
     case H_FLOAT:
@@ -334,8 +375,12 @@ int	fitsread(char *fitsbuf, char *keyword, void *ptr, h_type htype,
 			  *(BYTE *)ptr = ((int)s[0] == 'T') ? 1 : 0;
                         else if (ttype == T_SHORT)
 			  *(short *)ptr = ((int)s[0] == 'T') ? 1 : 0;
-                        else
+                        else if (ttype == T_LONG)
 			  *(LONG *)ptr = ((int)s[0] == 'T') ? 1 : 0;
+#ifdef HAVE_LONG_LONG_INT
+                        else
+			  *(SLONGLONG *)ptr = ((int)s[0] == 'T') ? 1 : 0;
+#endif
 			break;
 
     case H_STRING:	st = ptr;
@@ -426,7 +471,7 @@ OUTPUT	RETURN_OK if the keyword was found, RETURN_ERROR otherwise.
 NOTES	The buffer MUST contain the ``END     '' keyword.
 	The keyword must already exist in the buffer (use fitsadd()).
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	17/11/2004
+VERSION	13/06/2012
  ***/
 int	fitswrite(char *fitsbuf, char *keyword, void *ptr, h_type htype,
 		t_type ttype)
@@ -445,19 +490,26 @@ int	fitswrite(char *fitsbuf, char *keyword, void *ptr, h_type htype,
   fitsbuf += 80*pos;
   switch(htype)
     {
-    case H_INT:	sprintf(str, "%20d", (ttype==T_SHORT)?
-				*(short *)ptr: *(int *)ptr);
+    case H_INT:		if (ttype==T_LONG)
+			  sprintf(str, "%20d", *(int *)ptr);
+			else if (ttype==T_SHORT)
+			  sprintf(str, "%20d", *(short *)ptr);
+#ifdef HAVE_LONG_LONG_INT
+			else
+			  sprintf(str, "%20lld", *(SLONGLONG *)ptr);
+#endif
 			break;
 
-    case H_FLOAT:	sprintf(str, "        %12.4f", (ttype==T_DOUBLE)?
+    case H_FLOAT:	sprintf(str, "    %16.8f", (ttype==T_DOUBLE)?
 				*(double *)ptr: *(float *)ptr);
 			break;
 
-    case H_EXPO:	sprintf(str, "    %16.9E", (ttype==T_DOUBLE)?
+    case H_EXPO:	sprintf(str, " %19.12E", (ttype==T_DOUBLE)?
 				*(double *)ptr: *(float *)ptr);
 			break;
 
-    case H_BOOL:	if (((ttype==T_SHORT)? *(short *)ptr : *(LONG *)ptr))
+    case H_BOOL:	if ((ttype==T_SHORT)? *(short *)ptr :
+				((ttype==T_BYTE)? *(BYTE *)ptr : *(LONG *)ptr))
 			  sprintf(str, "                   T");
 			else
 			  sprintf(str, "                   F");
@@ -538,7 +590,7 @@ int	fitswrite(char *fitsbuf, char *keyword, void *ptr, h_type htype,
   if (posoff==10 && i && (l=69-strlen(str))>0)
     {
     strncpy(str2, cstr, i);
-    str2[i+1] = 0;
+    str2[i] = 0;
     strcat(str, " ");
     strncat(str, str2, l);
     }
@@ -555,22 +607,26 @@ int	fitswrite(char *fitsbuf, char *keyword, void *ptr, h_type htype,
 
 /****** fixexponent ***********************************************************
 PROTO	void fixexponent(char *s)
-PURPOSE	Replaces the FORTRAN 'D' exponent sign to 'E' in a FITS line.
+PURPOSE	Replaces the FORTRAN 'D' exponent sign to 'E' in a FITS line, and filter
+	out non-numerical characters
 INPUT	FITS line
 OUTPUT	-.
 NOTES	-.
-AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	25/04/97
+AUTHOR	E. Bertin (IAP)
+VERSION	22/05/2009
  ***/
 void	fixexponent(char *s)
 
   {
-   int	i;
+   int	c,i;
 
   s += 9;
-  for (i=71; (int)*s != '/' && i--; s++)
-    if ((int)*s == 'D' || (int)*s == 'd')
+  for (i=71; (c=(int)*s) && c != '/' && i--; s++)
+    if (c == 'D' || c == 'd')
       *s = (char)'E';
+    else if ((c<'0' || c>'9') && c != '+' && c != '-'
+		&& c != 'e' && c != 'E' && c != '.')
+      *s = ' ';
 
   return;
   }

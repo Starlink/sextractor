@@ -1,18 +1,30 @@
- /*
- 				prefs.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				prefs.c
 *
-*	Part of:	SExtractor
+* Functions related to run-time configurations.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Functions to handle the configuration file.
+*	This file part of:	SExtractor
 *
-*	Last modify:	12/01/2006
+*	Copyright:		(C) 1993-2013 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		18/06/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -23,9 +35,23 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
+#include        <unistd.h>
+
+#if defined(USE_THREADS) \
+&& (defined(__APPLE__) || defined(FREEBSD) || defined(NETBSD))	/* BSD, Apple */
+ #include	<sys/types.h>
+ #include	<sys/sysctl.h>
+#elif defined(USE_THREADS) && defined(HAVE_MPCTL)		/* HP/UX */
+ #include	<sys/mpctl.h>
+#endif
+
+#ifdef HAVE_MKL
+ #include MKL_H
+#endif
 
 #include	"define.h"
 #include	"globals.h"
+#include	"back.h"
 #include	"prefs.h"
 #include	"preflist.h"
 #include	"fits/fitscat.h"
@@ -370,6 +396,106 @@ int     cistrcmp(char *cs, char *ct, int mode)
   }
 
 
+/********************************* preprefs **********************************/
+/*
+Set number of threads and endianity.
+*/
+void	preprefs()
+
+  {
+   char			str[80];
+   unsigned short	ashort=1;
+#ifdef USE_THREADS
+   int			nproc;
+#endif
+
+/* Test if byteswapping will be needed */
+  bswapflag = *((char *)&ashort);
+
+/* Multithreading */
+#ifdef USE_THREADS
+  if (prefs.nthreads <= 0)
+    {
+/*-- Get the number of processors for parallel builds */
+/*-- See, e.g. http://ndevilla.free.fr/threads */
+    nproc = -1;
+#if defined(_SC_NPROCESSORS_ONLN)		/* AIX, Solaris, Linux */
+    nproc = (int)sysconf(_SC_NPROCESSORS_ONLN);
+#elif defined(_SC_NPROCESSORS_CONF)
+    nproc = (int)sysconf(_SC_NPROCESSORS_CONF);
+#elif defined(__APPLE__) || defined(FREEBSD) || defined(NETBSD)	/* BSD, Apple */
+    {
+     int        mib[2];
+     size_t     len;
+
+     mib[0] = CTL_HW;
+     mib[1] = HW_NCPU;
+     len = sizeof(nproc);
+     sysctl(mib, 2, &nproc, &len, NULL, 0);
+     }
+#elif defined (_SC_NPROC_ONLN)			/* SGI IRIX */
+    nproc = sysconf(_SC_NPROC_ONLN);
+#elif defined(HAVE_MPCTL)			/* HP/UX */
+    nproc =  mpctl(MPC_GETNUMSPUS_SYS, 0, 0);
+#endif
+
+    if (nproc>0)
+      prefs.nthreads = ((prefs.nthreads) && nproc>(-prefs.nthreads))?
+		-prefs.nthreads : nproc;
+    else
+      {
+      prefs.nthreads = prefs.nthreads? -prefs.nthreads : 2;
+      sprintf(str, "NTHREADS defaulted to %d", prefs.nthreads);
+      warning("Cannot find the number of CPUs on this system:", str);
+      }
+    }
+#ifndef HAVE_ATLAS_MP
+   if (prefs.nthreads>1)
+     warning("This executable has been compiled using a version of the ATLAS "
+	"library without support for multithreading. ",
+	"Performance will be degraded.");
+#endif
+
+#else
+  if (prefs.nthreads != 1)
+    {
+    prefs.nthreads = 1;
+    warning("NTHREADS != 1 ignored: ",
+	"this build of " BANNER " is single-threaded");
+    }
+#endif
+
+/* We temporarily allow threads for non-multithreaded code (defaulted to 1)*/
+#ifdef HAVE_MKL
+  mkl_set_num_threads(prefs.nthreads);
+#endif
+
+/* Override INTEL CPU detection routine to help performance on 3rd-party CPUs */
+#if defined(__INTEL_COMPILER) && defined (USE_CPUREDISPATCH)
+  __get_cpuid(1, &eax, &ebx, &ecx, &edx);
+  if (ecx&bit_AVX)
+    __intel_cpu_indicator = 0x20000;
+  else if (ecx&bit_SSE4_2)
+    __intel_cpu_indicator = 0x8000;
+  else if (ecx&bit_SSE4_1)
+    __intel_cpu_indicator = 0x2000;
+  else if (ecx&bit_SSSE3)
+    __intel_cpu_indicator = 0x1000;
+  else if (ecx&bit_SSE3)
+    __intel_cpu_indicator = 0x0800;
+  else if (edx&bit_SSE2)
+    __intel_cpu_indicator = 0x0200;
+  else if (edx&bit_SSE)
+    __intel_cpu_indicator = 0x0080;
+  else if (edx&bit_MMX)
+    __intel_cpu_indicator = 0x0008;
+  else
+    __intel_cpu_indicator = 0x0001;
+#endif
+
+  }
+
+
 /********************************* useprefs **********************************/
 /*
 Update various structures according to the prefs.
@@ -377,12 +503,8 @@ Update various structures according to the prefs.
 void	useprefs()
 
   {
-   unsigned short	ashort=1;
    int			i, margin, naper;
    char			*str;
-
-/* Test if byteswapping will be needed */
-  bswapflag = *((char *)&ashort);
 
 /*-------------------------------- Images ----------------------------------*/
   prefs.dimage_flag = (prefs.nimage_name>1);
@@ -402,9 +524,12 @@ void	useprefs()
   prefs.world_flag = FLAG(obj2.mxw) || FLAG(obj2.mamaposx)
 		|| FLAG(obj2.peakxw) || FLAG(obj2.winpos_xw)
 		|| FLAG(obj2.mx2w) || FLAG(obj2.win_mx2w)
+		|| FLAG(obj2.xw_prof) || FLAG(obj2.poserrmx2w_prof)
 		|| FLAG(obj2.poserr_mx2w) || FLAG(obj2.winposerr_mx2w)
-		|| FLAG(obj2.npixw) || FLAG(obj2.fdnpixw)
-		|| FLAG(obj2.fwhmw);
+		|| FLAG(obj2.area_flagw) || FLAG(obj2.prof_flagw)
+		|| FLAG(obj2.fwhmw_psf)
+		|| (FLAG(obj2.sprob) && prefs.pixel_scale == 0.0);
+
 /* Default astrometric settings */
   strcpy(prefs.coosys, "ICRS");
   prefs.epoch = 2000.0;
@@ -466,12 +591,15 @@ void	useprefs()
   prefs.somfit_flag = FLAG(obj2.flux_somfit);
 
 /*------------------------------ Background --------------------------------*/
+  if (prefs.nback_type<2)
+    prefs.back_type[1] = prefs.back_type[0];
+  if (prefs.nback_val<2)
+    prefs.back_val[1] = prefs.back_val[0];
+
   if (prefs.nbacksize<2)
     prefs.backsize[1] = prefs.backsize[0];
   if (prefs.nbackfsize<2)
     prefs.backfsize[1] = prefs.backfsize[0];
-  if (prefs.nback_type<2)
-    prefs.back_type[1] = prefs.back_type[0];
 
 /*------------------------------ FLAG-images -------------------------------*/
   prefs.nimaisoflag = (prefs.imaflag_size > prefs.imanflag_size) ?
@@ -492,14 +620,21 @@ void	useprefs()
 /*---------------------------- PSF-fitting ---------------------------------*/
   if (FLAG(obj2.flux_psf) )
     {
-    prefs.psf_flag = 1;
-    prefs.dpsf_flag = (prefs.npsf_name>1);	/*?*/
+    prefs.psffit_flag = 1;
+/* We deactivate double-PSF fits for now */
+/*
+    prefs.dpsffit_flag = (prefs.npsf_name>1);
+*/
     }
   if (prefs.check_flag)
     for (i=0; i<prefs.ncheck_type; i++)
       if (prefs.check_type[i] == CHECK_SUBPSFPROTOS
 		|| prefs.check_type[i] == CHECK_PSFPROTOS)
-        prefs.psf_flag = 1;
+        prefs.psffit_flag = 1;
+  if (prefs.psffit_flag)
+    prefs.psf_flag = 1;
+  if (prefs.dpsffit_flag)
+    prefs.dpsf_flag = 1;
 
 /*---------------------------- PC-fitting ----------------------------------*/
 /* PC-fitting is possible only if a PSF file is loaded */
@@ -513,6 +648,32 @@ void	useprefs()
 		|| prefs.check_type[i] == CHECK_PCOPROTOS)
           prefs.pc_flag = 1;
     }
+
+/*----------------------------- Model-fitting -------------------------------*/
+  if (prefs.check_flag)
+    for (i=0; i<prefs.ncheck_type; i++)
+      if (prefs.check_type[i] == CHECK_PROFILES
+	|| prefs.check_type[i] == CHECK_SUBPROFILES
+	|| prefs.check_type[i] == CHECK_SPHEROIDS
+	|| prefs.check_type[i] == CHECK_SUBSPHEROIDS
+	|| prefs.check_type[i] == CHECK_DISKS
+	|| prefs.check_type[i] == CHECK_SUBDISKS)
+        prefs.prof_flag = 1;
+  if (prefs.prof_flag)
+    prefs.psf_flag = 1;
+  if (prefs.dprof_flag)
+    prefs.dpsf_flag = 1;
+
+/*-------------------------- Tracking the PSF FWHM --------------------------*/
+  if (prefs.seeing_fwhm == 0 && (FLAG(obj2.sprob) || FLAG(obj2.fwhm_psf)))
+    prefs.psf_flag = 1;
+
+/*-------------------------- Pattern-fitting -------------------------------*/
+/* Profile-fitting is possible only if a PSF file is loaded */
+  if (prefs.check_flag)
+    for (i=0; i<prefs.ncheck_type; i++)
+      if (prefs.check_type[i] == CHECK_PATTERNS)
+        prefs.pattern_flag = 1;
 
 /*----------------------------- WEIGHT-images ------------------------------*/
   if (prefs.nweight_type<2)
@@ -528,6 +689,11 @@ void	useprefs()
       for (i=2; --i >= prefs.nweight_thresh;)
         prefs.weight_thresh[i] = (prefs.weight_type[i]==WEIGHT_FROMWEIGHTMAP)?
 					0.0 : BIG;
+/*-- Weight rescaling flags */
+    if (prefs.nwscale_flag<2)
+       prefs.wscale_flag[1] = (prefs.weight_type[1]==WEIGHT_FROMBACK)?
+					BACK_WSCALE : prefs.wscale_flag[0];
+
 /*-- Check WEIGHT_IMAGE parameter(s) */
     if ((!prefs.nwimage_name
 	&& ((prefs.weight_type[0]!=WEIGHT_FROMBACK
@@ -598,3 +764,23 @@ void	useprefs()
   }
 
 
+/********************************* endprefs *********************************/
+/*
+Mostly free memory allocate for static arrays.
+*/
+void	endprefs(void)
+
+  {
+    int i;
+
+  for (i=0; i<prefs.nfimage_name; i++)
+      free(prefs.fimage_name[i]);
+  for (i=0; i<prefs.nwimage_name; i++)
+      free(prefs.wimage_name[i]);
+  for (i=0; i<prefs.npsf_name; i++)
+      free(prefs.psf_name[i]);
+  for (i=0; i<prefs.ncheck_name; i++)
+      free(prefs.check_name[i]);
+
+  return;
+  }

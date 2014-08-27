@@ -1,28 +1,43 @@
 /*
- 				fitscat.h
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				fitscat.h
 *
-*	Part of:	The LDAC Tools
+* Main include file for the LDACTools FITS library.
 *
-*	Author:		E.BERTIN, DeNIS/LDAC
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Simplified versin of the LDACTools: main include file
+*	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Last modify:	10/07/2006
+*	Copyright:		(C) 1995-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		29/08/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifndef _FITSCAT_H_
 #define _FITSCAT_H_
+
+#include <stdio.h>
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
 
 #define	MAXCHARS	256	/* max. number of characters */
-#define WARNING_NMAX	100	/* max. number of recorded warnings */
+#define WARNING_NMAX	1000	/* max. number of recorded warnings */
 
 /*---------------------------- return messages ------------------------------*/
 
@@ -41,6 +56,7 @@
 #define		BP_BYTE		8
 #define		BP_SHORT	16
 #define		BP_LONG		32
+#define		BP_LONGLONG	64
 #define		BP_FLOAT	(-32)
 #define		BP_DOUBLE	(-64)
 
@@ -67,30 +83,34 @@
 typedef enum            {H_INT, H_FLOAT, H_EXPO, H_BOOL, H_STRING, H_STRINGS,
 			H_COMMENT, H_HCOMMENT, H_KEY}	h_type;
 						/* type of FITS-header data */
-typedef enum		{T_BYTE, T_SHORT, T_LONG, T_FLOAT, T_DOUBLE, T_STRING}
+typedef enum		{T_BYTE, T_SHORT, T_LONG, T_LONGLONG,
+			T_FLOAT, T_DOUBLE, T_STRING}
 				t_type;		/* Type of data */
 typedef enum		{WRITE_ONLY, READ_ONLY}
-				access_type;	/* Type of access */
+				access_type_t;	/* Type of access */
 typedef enum		{SHOW_ASCII, SHOW_SKYCAT}
 				output_type;    /* Type of output */
 
 typedef	float		PIXTYPE;		/* Pixel type */
+typedef	unsigned int	FLAGTYPE;		/* Flag type */
 
-#ifdef	HAVE_UNSIGNED_LONG_LONG
-typedef	unsigned long long	KINGSIZE_T;	/* for large sizes */
+#ifdef	HAVE_UNSIGNED_LONG_LONG_INT
+typedef	unsigned long long		KINGSIZE_T;	/* for large sizes */
+typedef unsigned long long		ULONGLONG;
 #else
-typedef	size_t			KINGSIZE_T;	/* better than nothing */
+typedef	size_t				KINGSIZE_T;/* better than nothing */
+typedef union {unsigned int l[2];}	ULONGLONG;
 #endif
-#ifdef HAVE_LONG_LONG
-typedef	long long		KINGLONG;	/* for large sizes */
+#ifdef HAVE_LONG_LONG_INT
+typedef long long			SLONGLONG;
 #else
-typedef	long			KINGLONG;	/* better than nothing */
+typedef union {int l[2];}		SLONGLONG;
 #endif
 
-#if _FILE_OFFSET_BITS
+#if defined(_FILE_OFFSET_BITS) && !defined(OFF_T)
 #define OFF_T	off_t
 #else
-#define OFF_T	KINGLONG
+#define OFF_T	long
 #endif
 
 /*------------------------------- constants ---------------------------------*/
@@ -129,7 +149,7 @@ typedef struct structcat
   FILE		*file;			/* pointer to the file structure */
   struct structtab *tab;		/* pointer to the first table */
   int		ntab;			/* number of tables included */
-  access_type	access_type;		/* READ_ONLY or WRITE_ONLY */
+  access_type_t	access_type;		/* READ_ONLY or WRITE_ONLY */
   }		catstruct;
 
 /*-------------------------------- table  ----------------------------------*/
@@ -212,6 +232,7 @@ extern void	add_cleanupfilename(char *filename),
 			int nkeys, unsigned char *mask),
 		read_basic(tabstruct *tab),
 		read_body(tabstruct *tab, PIXTYPE *ptr, size_t size),
+		read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size),
 		readbasic_head(tabstruct *tab),
 		remove_cleanupfilename(char *filename),
 		save_cat(catstruct *cat, char *filename),
@@ -226,6 +247,7 @@ extern void	add_cleanupfilename(char *filename),
 		voprint_obj(FILE *stream, tabstruct *tab),
 		warning(char *, char *),
 		write_body(tabstruct *tab, PIXTYPE *ptr, size_t size),
+		write_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size),
 		write_checksum(tabstruct *tab);
 
 extern char	*tdisptoprintf(char *tdisp, char *str),
@@ -271,7 +293,7 @@ extern int	about_cat(catstruct *cat, FILE *stream),
 		inherit_cat(catstruct *catin, catstruct *catout),
 		init_cat(catstruct *cat),
 		map_cat(catstruct *cat),
-		open_cat(catstruct *cat, access_type at),
+		open_cat(catstruct *cat, access_type_t at),
 		pad_tab(catstruct *cat, KINGSIZE_T size),
 		prim_head(tabstruct *tab),
 		readbintabparam_head(tabstruct *tab),
@@ -282,6 +304,7 @@ extern int	about_cat(catstruct *cat, FILE *stream),
 				long pos),
 		remove_key(tabstruct *tab, char *keyname),
 		remove_keys(tabstruct *tab),
+                removekeywordfrom_head(tabstruct *tab, char *keyword),
 		remove_tab(catstruct *cat, char *tabname, int seg),
 		remove_tabs(catstruct *cat),
 		save_head(catstruct *cat, tabstruct *tab),
@@ -299,6 +322,9 @@ extern int	about_cat(catstruct *cat, FILE *stream),
 
 extern PIXTYPE	*alloc_body(tabstruct *tab,
 			void (*func)(PIXTYPE *ptr, int npix));
+
+extern FLAGTYPE	*alloc_ibody(tabstruct *tab,
+			void (*func)(FLAGTYPE *ptr, int npix));
 
 extern t_type	ttypeof(char *str);
 

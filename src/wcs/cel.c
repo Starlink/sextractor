@@ -1,3 +1,32 @@
+/*
+*				cel.c
+*
+* Lower level spherical coordinate transformation and projection routines.
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*
+*	This file part of:	AstrOmatic WCS library
+*
+*	Copyright:		(C) 2000-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
+*				(C) 1995-1999 Mark Calabretta (original version)
+*
+*	Licenses:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		18/04/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 /*=============================================================================
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
@@ -201,6 +230,7 @@
 *      ZEA: zenithal/azimuthal equal area
 *      AIR: Airy
 *      TNX: IRAF's polynomial correction to TAN
+*      TPV: AstrOmatic's polynomial correction to TAN
 *
 *   Cylindricals:
 *      CYP: cylindrical perspective
@@ -233,8 +263,9 @@
 *
 *   Author: Mark Calabretta, Australia Telescope National Facility
 *   IRAF's TNX added by E.Bertin 2000/03/28
+*   TPV added by E.Bertin 2012/04/11
 *   Filtering of abs(phi)>180 and abs(theta)>90 added by E.Bertin 2000/11/11
-*   $Id: cel.c,v 1.1.1.1 2002/03/15 16:33:26 bertin Exp $
+*   $Id: cel.c,v 1.1.1.1 2012/04/18 16:33:26 bertin Exp $
 *===========================================================================*/
 
 #ifdef HAVE_CONFIG_H
@@ -252,11 +283,11 @@
 #include "sph.h"
 #include "tnx.h"
 
-int  npcode = 26;
-char pcodes[26][4] =
+int  npcode = 27;
+char pcodes[27][4] =
       {"AZP", "TAN", "SIN", "STG", "ARC", "ZPN", "ZEA", "AIR", "CYP", "CAR",
        "MER", "CEA", "COP", "COD", "COE", "COO", "BON", "PCO", "GLS", "PAR",
-       "AIT", "MOL", "CSC", "QSC", "TSC", "TNX"};
+       "AIT", "MOL", "CSC", "QSC", "TSC", "TNX", "TPV"};
 
 /* Map error number to error message for each function. */
 const char *celset_errmsg[] = {
@@ -291,13 +322,17 @@ struct prjprm *prj;
    double u, v, x, y, z;
 
    /* Set pointers to the forward and reverse projection routines. */
-   if (strcmp(pcode, "AZP") == 0) {
-      cel->prjfwd = azpfwd;
-      cel->prjrev = azprev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "TAN") == 0) {
+   if (strcmp(pcode, "TAN") == 0) {
       cel->prjfwd = tanfwd;
       cel->prjrev = tanrev;
+      theta0 = 90.0;
+   } else if (strcmp(pcode, "TPV") == 0) {
+      cel->prjfwd = tanfwd;
+      cel->prjrev = tanrev;
+      theta0 = 90.0;
+   } else if (strcmp(pcode, "AZP") == 0) {
+      cel->prjfwd = azpfwd;
+      cel->prjrev = azprev;
       theta0 = 90.0;
    } else if (strcmp(pcode, "SIN") == 0) {
       cel->prjfwd = sinfwd;

@@ -1,18 +1,38 @@
- /*
- 				prefs.h
+/*
+*				prefs.h
+*
+* Include file for prefs.c.
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*
+*	This file part of:	SExtractor
+*
+*	Copyright:		(C) 1993-2011 Emmanuel Bertin -- IAP/CNRS/UPMC
+*
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		02/11/2011
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*
-*	Part of:	SExtractor
-*
-*	Author:		E.BERTIN (IAP)
-*
-*	Contents:	Keywords for the configuration file.
-*
-*	Last modify:	13/07/2006
-*
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+#ifndef _PROFIT_H_
+#include        "profit.h"
+#endif
+
+#ifndef _PATTERN_H_
+#include        "pattern.h"
+#endif
 
 #ifndef _PREFS_H_
 #define _PREFS_H_
@@ -33,6 +53,7 @@ typedef struct
   char		*(image_name[2]);			/* image filenames */
   int		nimage_name;				/* nb of params */
   char		cat_name[MAXCHAR];			/* catalog filename*/
+  char		head_suffix[MAXCHAR];			/* ext. header suffix */
 /*----- thresholding */
   double	dthresh[2];				/* detect. threshold */
   int		ndthresh;				/* (1 or 2 entries) */
@@ -44,6 +65,7 @@ typedef struct
 /*----- extraction */
   int		dimage_flag;				/* detect. image ? */
   int		ext_minarea;				/* min area in pix. */
+  int		ext_maxarea;				/* max area in pix. */
   int		deb_maxarea;				/* max deblend. area */
   int		filter_flag;				/* smoothing on/off */
   char		filter_name[MAXCHAR];			/* mask filename */
@@ -51,6 +73,7 @@ typedef struct
   int		nfilter_thresh;				/* nb of params */
   int		deblend_nthresh;			/* threshold number */
   double	deblend_mincont;			/* minimum contrast */
+  char		satur_key[8];				/* saturation keyword */
   double	satur_level;				/* saturation level */
   enum	{CCD, PHOTO}			detect_type;	/* detection type */
 /*----- Flagging */
@@ -73,6 +96,8 @@ typedef struct
   int		weight_flag;				/* do we weight ? */
   int		dweight_flag;				/* detection weight? */
   int		weightgain_flag;			/* weight gain? */
+  int		wscale_flag[2];		/* Weight rescaling */
+  int		nwscale_flag;				/* nb of params */
 /*----- photometry */
   enum	{CAT_NONE, ASCII, ASCII_HEAD, ASCII_SKYCAT, ASCII_VO,
 	FITS_LDAC, FITS_TPX, FITS_10}
@@ -91,6 +116,7 @@ typedef struct
   double	mag_zeropoint;				/* magnitude offsets */
   double	mag_gamma;				/* for emulsions */
   double	gain;					/* only for CCD */
+  char		gain_key[8];				/* gain keyword */
 /*----- S/G separation */
   double	pixel_scale;				/* in arcsec */
   double	seeing_fwhm;				/* in arcsec */
@@ -143,6 +169,8 @@ typedef struct
   enum	{ASSOC_FIRST, ASSOC_NEAREST, ASSOC_MEAN, ASSOC_MAGMEAN,
 	 ASSOC_SUM, ASSOC_MAGSUM, ASSOC_MIN, ASSOC_MAX}
 		assoc_type;				/* type of assoc. */
+  enum	{ASSOCCOORD_PIXEL, ASSOCCOORD_WORLD}
+		assoccoord_type;		       	/* type of coords */
   enum	{ASSOCSELEC_ALL, ASSOCSELEC_MATCHED, ASSOCSELEC_NOMATCHED}
 		assocselec_type;		       	/* type of assoc. */
   double	assoc_radius;				/* ASSOC range */
@@ -181,13 +209,13 @@ typedef struct
   double	flux_frac[MAXNAPER];			/* for FLUX_RADIUS */
   int		nflux_frac;       			/* number of elem. */
 /*----- PSF-fitting */
-  int		psf_flag;				/* PSF-fit needed */
-  int		dpsf_flag;				/* dual image PSF-fit */
+  int		psf_flag;				/* PSF needed */
+  int		dpsf_flag;				/* detectiob PSF */
+  int		psffit_flag;				/* PSF-fit needed */
+  int		dpsffit_flag;				/* dual image PSF-fit */
   char		*(psf_name[2]);				/* PSF filename */
   int		npsf_name;				/* nb of params */
   int		psf_npsfmax;				/* Max # of PSFs */
-  enum	{PSFDISPLAY_SPLIT, PSFDISPLAY_VECTOR}
-		psfdisplay_type;			/* PSF display type */
   int		psf_xsize,psf_ysize;			/* nb of params */
   int		psf_xwsize,psf_ywsize;			/* nb of params */
   int		psf_alphassize,psf_deltassize;		/* nb of params */
@@ -199,6 +227,21 @@ typedef struct
   int		psf_magerrsize;				/* nb of params */
   int		pc_flag;				/* PC-fit needed */
   int		pc_vectorsize;				/* nb of params */
+  int		prof_flag;				/* Profile-fitting */
+  int		dprof_flag;				/* Det. Prof.-fitting */
+  int		pattern_flag;				/* Pattern-fitting */
+/*----- Profile-fitting */
+  int		prof_vectorsize;			/* nb of params */
+  int		prof_errvectorsize;			/* nb of params */
+  int		prof_errmatrixsize[2];			/* nb of params */
+  int		prof_disk_patternvectorsize;		/* nb of params */
+  int		prof_disk_patternncomp;			/* nb of params */
+  int		prof_disk_patternmodvectorsize;		/* nb of params */
+  int		prof_disk_patternmodncomp;		/* nb of params */
+  int		prof_disk_patternargvectorsize;		/* nb of params */
+  int		prof_disk_patternargncomp;		/* nb of params */
+/*----- Pattern-fitting */
+  pattypenum	pattern_type;				/* Disk pattern type */
 /*----- customize */
   int		fitsunsigned_flag;			/* Force unsign FITS */
   int		next;			     /* Number of extensions in file */
@@ -212,6 +255,8 @@ typedef struct
 extern int	cistrcmp(char *cs, char *ct, int mode);
 
 extern void	dumpprefs(int state),
+		endprefs(void),
+		preprefs(void),
 		readprefs(char *filename,char **argkey,char **argval,int narg),
 		useprefs(void);
 #endif

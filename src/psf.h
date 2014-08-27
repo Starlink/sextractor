@@ -1,19 +1,30 @@
- /*
- 				psf.h
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				psf.h
 *
-*	Part of:	SExtractor
+* Include file for psf.c.
 *
-*	Authors:	E.BERTIN (IAP)
-*			P.DELORME (LAOG)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Include file for psffit.c.
+*	This file part of:	SExtractor
 *
-*	Last modify:	12/01/2006
+*	Copyright:		(C) 1998-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		13/06/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 /*----------------------------- Internal constants --------------------------*/
 
@@ -54,21 +65,21 @@ typedef struct pc
   int		*omasksize;	/* PC mask dimensions */
   int		omasknpix;	/* Total number of involved PC pixels */
   float		*omaskcomp; 	/* Original pix data (principal components) */
-  double	*maskcurr;	/* Current model */
-  double	*mx2,*my2,*mxy;	/* 2nd order moments for each component */
-  double	*flux;		/* Flux of each component */
-  double	*bt;		/* B/T for each component */
+  float		*maskcurr;	/* Current model */
+  float		*mx2,*my2,*mxy;	/* 2nd order moments for each component */
+  float		*flux;		/* Flux of each component */
+  float		*bt;		/* B/T for each component */
   codestruct	*code;
   }	pcstruct;
 
-typedef struct
+typedef struct psf
   {
   char		name[MAXCHAR];	/* Name of the file containing the PSF data */
   int		maskdim;	/* Dimensionality of the tabulated data */
   int		*masksize;	/* PSF mask dimensions */
   int		masknpix;	/* Total number of involved PSF pixels */
   float		*maskcomp;      /* Complete pix. data (PSF components) */
-  double	*maskloc;	/* Local PSF */
+  float		*maskloc;	/* Local PSF */
   double	**context;	/* Contexts */
   t_type	*contexttyp;	/* Context types */
   char		**contextname;	/* Array of context key-names */
@@ -78,19 +89,21 @@ typedef struct
   pcstruct	*pc;		/* PC components */
   double	fwhm;		/* Typical PSF FWHM */
   float		pixstep;	/* PSF sampling step */
+  int		build_flag;	/* Set if the current PSF has been computed */
   }	psfstruct;
 
 typedef struct
   {
   int		niter;		/* Number of iterations required */
   int		npsf;		/* Number of fitted stars for this detection */
-  float		*x,*y;		/* Position derived from the PSF-fitting */
+  double	*x,*y;		/* Position derived from the PSF-fitting */
   float		*flux;		/* Flux derived from the PSF-fitting */
+  float		*fluxerr;	/* Flux error estimated from the PSF-fitting */
   }	psfitstruct;
 
 /*----------------------------- Global variables ----------------------------*/
-psfstruct	*psf,*ppsf,*thepsf;
-psfitstruct	*thepsfit,*ppsfit,*psfit;
+psfstruct	*psf,*thedpsf,*thepsf;
+psfitstruct	*thepsfit,*thedpsfit;
 PIXTYPE		*checkmask;
 
 /*-------------------------------- functions --------------------------------*/
@@ -100,25 +113,26 @@ extern void	compute_pos(int *pnpsf,int *pconvflag,int *pnpsfflag,
 			double *pdx,double *pdy),
 		compute_pos_phot(int *pnpsf,double *sol,double *flux),
 		compute_poserr(int j,double *var,double *sol,obj2struct *obj2,
-			double *x2, double *y2,double *xy),
+			double *x2, double *y2,double *xy, int npsf),
 		psf_build(psfstruct *psf),
 		psf_end(psfstruct *psf, psfitstruct *psfit),
-		psf_init(psfstruct *psf),
-		svdfit(double *a, double *b, int m, int n, double *sol,
+		psf_init(void),
+		svdfit(double *a, float *b, int m, int n, double *sol,
 			double *vmat, double *wmat),
 		svdvar(double *vmat, double *wmat, int n, double *covmat);
 
-extern double	*compute_gradient (double *weight,int width, int height,
-			double *masks, double *maskx, double *masky,
+extern double	*compute_gradient (float *weight,int width, int height,
+			float *masks, float *maskx, float *masky,
 			double *mat),
-		*compute_gradient_phot(double *weight,int width, int height,
-			double *masks, double *pm);
+		*compute_gradient_phot(float *weight,int width, int height,
+			float *masks, double *pm),
+		psf_fwhm(psfstruct *psf);
 
-extern psfstruct	*psf_load(char *filename);
+extern psfstruct	*psf_load(char *filename, int ext);
 
 extern void	pc_end(pcstruct *pc),
-		pc_fit(psfstruct *psf, double *data, double *weight,
-		int width, int height, int ix, int iy, double dx, double dy,
+		pc_fit(psfstruct *psf, float *data, float *weight,
+		int width, int height, int ix, int iy, float dx, float dy,
 		int npc, float backrms),
 		double_psf_fit(psfstruct *psf, picstruct *field,
 			picstruct *wfield, objstruct *obj,
@@ -128,3 +142,4 @@ extern void	pc_end(pcstruct *pc),
 		psf_readcontext(psfstruct *psf, picstruct *field);
 
 extern pcstruct	*pc_load(catstruct *cat);
+

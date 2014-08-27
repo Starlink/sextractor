@@ -1,19 +1,31 @@
- /*
- 				filter.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				filter.c
 *
-*	Part of:	SExtractor
+* 
+* Filter image rasters (for detection).
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	functions dealing with on-line filtering of the image
-*			(for detection).
+*	This file part of:	SExtractor
 *
-*	Last modify:	26/11/2003
+*	Copyright:		(C) 1993-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		11/10/2010
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -36,10 +48,10 @@
 /*
 Convolve a scan line with an array.
 */
-void	convolve(picstruct *field, PIXTYPE *mscan)
+void	convolve(picstruct *field, PIXTYPE *mscan, int y)
 
   {
-   int		mw,mw2,m0,me,m,mx,dmx, y0,dy, sw,sh;
+   int		mw,mw2,m0,me,m,mx,dmx, y0, dy, sw,sh;
    float	*mask;
    PIXTYPE	*mscane, *s,*s0, *d,*de, mval;
 
@@ -48,7 +60,7 @@ void	convolve(picstruct *field, PIXTYPE *mscan)
   mw = thefilter->convw;
   mw2 = mw/2;
   mscane = mscan+sw;
-  y0 = field->y - (thefilter->convh/2);
+  y0 = y - (thefilter->convh/2);
   if ((dy = field->ymin-y0) > 0)
     {
     m0 = mw*dy;
@@ -265,13 +277,13 @@ void	endfilter()
 /*
 Switch to the appropriate filtering routine.
 */
-void	filter(picstruct *field, PIXTYPE *mscan)
+void	filter(picstruct *field, PIXTYPE *mscan, int y)
 
   {
   if (thefilter->bpann)
-    neurfilter(field, mscan);
+    neurfilter(field, mscan, y);
   else
-    convolve(field, mscan);
+    convolve(field, mscan, y);
 
   return;
   }
@@ -281,7 +293,7 @@ void	filter(picstruct *field, PIXTYPE *mscan)
 /*
 Filter a scan line using an artificial retina.
 */
-void	neurfilter(picstruct *field, PIXTYPE *mscan)
+void	neurfilter(picstruct *field, PIXTYPE *mscan, int y)
 
   {
    PIXTYPE	cval;
@@ -302,7 +314,7 @@ void	neurfilter(picstruct *field, PIXTYPE *mscan)
     {
     if (tflag)
       {
-      cval = PIX(field, x, field->y);
+      cval = PIX(field, x, y);
       if (cval<threshlow || cval>threshhigh)
         {
         *(mscan++) = cval;
@@ -311,7 +323,7 @@ void	neurfilter(picstruct *field, PIXTYPE *mscan)
       }
 /*-- Copy the surrounding image area to the retina */
     copyimage(field, thefilter->conv, thefilter->convw, thefilter->convh,
-		x, field->y);
+		x, y);
     pix = thefilter->conv;
 /*-- Apply a transform of the intensity scale */
     for (i=thefilter->nconv; i--; pix++)
@@ -333,24 +345,23 @@ void	neurfilter(picstruct *field, PIXTYPE *mscan)
 /*
 Convolve a vignet with an array.
 */
-void	convolve_image(picstruct *field, double *vig1,
-		double *vig2, int width, int height)
+void	convolve_image(picstruct *field, float *vig1,
+		float *vig2, int width, int height)
 
   {
    int		mw,mw2,m0,me,m,mx,dmx, y, y0,dy;
-   float	*mask;
-   double	*mscane, *s,*s0, *vig3, *d,*de, mval, val;
+   float	*mask, *mscane, *s,*s0, *vig3, *d,*de, mval, val;
 
 /* If no filtering, just return a copy of the input data */
   if (!thefilter || thefilter->bpann)
     {
-    memcpy(vig2, vig1, width*height*sizeof(double));
+    memcpy(vig2, vig1, width*height*sizeof(float));
     return;
     }    
   s0 = NULL;				/* To avoid gcc -Wall warnings */
   mw = thefilter->convw;
   mw2 = mw/2;
-  memset(vig2, 0, width*height*sizeof(double));
+  memset(vig2, 0, width*height*sizeof(float));
   vig3 = vig2;
   for (y=0; y<height; y++, vig3+=width)
     {

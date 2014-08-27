@@ -1,19 +1,30 @@
- /*
- 				preflist.h
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				preflist.h
 *
-*	Part of:	SExtractor
+*  Configuration keyword definitions.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Keywords for the configuration file.
+*	This file part of:	SExtractor
 *
-*	Last modify:	14/07/2006
+*	Copyright:		(C) 1993-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
-
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		30/10/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #include "key.h"
 
@@ -43,6 +54,8 @@
   {"ASSOC_TYPE", P_KEY, &prefs.assoc_type, 0,0, 0.0,0.0,
    {"FIRST", "NEAREST", "MEAN", "MAG_MEAN", "SUM", "MAG_SUM",
    "MIN", "MAX", ""}},
+  {"ASSOCCOORD_TYPE", P_KEY, &prefs.assoccoord_type, 0,0, 0.0,0.0,
+   {"PIXEL","WORLD",""}},
   {"ASSOCSELEC_TYPE", P_KEY, &prefs.assocselec_type, 0,0, 0.0,0.0,
    {"ALL","MATCHED","-MATCHED",""}},
   {"BACK_FILTERSIZE", P_INTLIST, prefs.backfsize, 1,11, 0.0,0.0,
@@ -68,15 +81,21 @@
    {"NONE", "IDENTICAL",
    "BACKGROUND", "BACKGROUND_RMS", "MINIBACKGROUND",
    "MINIBACK_RMS", "-BACKGROUND",
-   "FILTERED", "OBJECTS", "APERTURES", "SEGMENTATION", "ASSOC",
-   "-OBJECTS", "-PSF_PROTOS", "PSF_PROTOS",
-   "-PC_CONVPROTOS", "PC_CONVPROTOS", "PC_PROTOS", ""},
+   "FILTERED", "OBJECTS", "APERTURES", "SEGMENTATION", "MASK", "-MASK", "ASSOC",
+   "-OBJECTS", "PSFS", "-PSFS",
+   "PC_CONVPROTOS", "-PC_CONVPROTOS", "PC_PROTOS",  "MAP_SOM",
+#ifdef USE_MODEL
+   "MODELS", "-MODELS", "SPHEROIDS", "-SPHEROIDS",
+   "DISKS", "-DISKS", "PATTERNS",
+#endif
+   "OTHER", ""},
    0, 17, &prefs.ncheck_type},
   {"CLEAN", P_BOOL, &prefs.clean_flag},
   {"CLEAN_PARAM", P_FLOAT, &prefs.clean_param, 0,0, 0.1,10.0},
   {"DEBLEND_MINCONT", P_FLOAT, &prefs.deblend_mincont, 0,0, 0.0,1.0},
   {"DEBLEND_NTHRESH", P_INT, &prefs.deblend_nthresh, 1,64},
   {"DETECT_MINAREA", P_INT, &prefs.ext_minarea, 1,1000000},
+  {"DETECT_MAXAREA", P_INT, &prefs.ext_maxarea, 0,1000000000},
   {"DETECT_THRESH", P_FLOATLIST, prefs.dthresh, 0,0, -BIG, BIG,
    {""}, 1, 2, &prefs.ndthresh},
   {"DETECT_TYPE", P_KEY, &prefs.detect_type, 0,0, 0.0,0.0,
@@ -91,6 +110,8 @@
   {"FLAG_TYPE",  P_KEYLIST, prefs.flag_type, 0,0, 0.0,0.0,
    {"OR","AND","MIN", "MAX", "MOST",""}, 0, MAXFLAG, &idummy},
   {"GAIN", P_FLOAT, &prefs.gain, 0,0, 0.0, 1e+30},
+  {"GAIN_KEY", P_STRING, prefs.gain_key},
+  {"HEADER_SUFFIX", P_STRING, prefs.head_suffix},
   {"INTERP_MAXXLAG", P_INTLIST, prefs.interp_xtimeout, 1,1000000, 0.0,0.0,
    {""}, 1, 2, &prefs.ninterp_xtimeout},
   {"INTERP_MAXYLAG", P_INTLIST, prefs.interp_ytimeout, 1,1000000, 0.0,0.0,
@@ -103,9 +124,12 @@
    {"NONE","BLANK","CORRECT",""}},
   {"MEMORY_BUFSIZE", P_INT, &prefs.mem_bufsize, 8, 65534},
   {"MEMORY_OBJSTACK", P_INT, &prefs.clean_stacksize, 16,65536},
-  {"MEMORY_PIXSTACK", P_INT, &prefs.mem_pixstack, 1000, 10000000},
-  {"NTHREADS", P_INT, &prefs.nthreads, 0, THREADS_PREFMAX},
+  {"MEMORY_PIXSTACK", P_INT, &prefs.mem_pixstack, 1000, 100000000},
+  {"NTHREADS", P_INT, &prefs.nthreads, -THREADS_PREFMAX, THREADS_PREFMAX},
   {"PARAMETERS_NAME", P_STRING, prefs.param_name},
+  {"PATTERN_TYPE", P_KEY, &prefs.pattern_type, 0,0, 0.0,0.0,
+   {"RINGS-QUADPOLE", "RINGS-OCTOPOLE", "RINGS-HARMONIC", "GAUSS-LAGUERRE",
+   ""}},
   {"PHOT_APERTURES", P_FLOATLIST, prefs.apert, 0,0, 0.0,2*MAXPICSIZE,
    {""}, 1, MAXNAPER, &prefs.naper},
   {"PHOT_AUTOPARAMS", P_FLOATLIST, prefs.autoparam, 0,0, 0.0,10.0,
@@ -120,10 +144,11 @@
   {"PSF_NAME", P_STRINGLIST, prefs.psf_name, 0,0, 0.0,0.0,
    {""}, 1, 2, &prefs.npsf_name},	/*?*/
   {"PSF_NMAX", P_INT, &prefs.psf_npsfmax, 1, PSF_NPSFMAX},
-  {"PSFDISPLAY_TYPE", P_KEY, &prefs.psfdisplay_type, 0,0, 0.0,0.0,
-   {"SPLIT","VECTOR",""}},
+  {"RESCALE_WEIGHTS", P_BOOLLIST, prefs.wscale_flag, 0,0, 0.0,0.0,
+   {""}, 1, 2, &prefs.nwscale_flag},
+  {"SATUR_KEY", P_STRING, prefs.satur_key},
   {"SATUR_LEVEL", P_FLOAT, &prefs.satur_level, 0,0, -1e+30, 1e+30},
-  {"SEEING_FWHM", P_FLOAT, &prefs.seeing_fwhm, 0,0, 1e-10, 1e+10},
+  {"SEEING_FWHM", P_FLOAT, &prefs.seeing_fwhm, 0,0, 0.0, 1e+10},
   {"SOM_NAME", P_STRING, prefs.som_name},
   {"STARNNW_NAME", P_STRING, prefs.nnw_name},
   {"THRESH_TYPE", P_KEYLIST, prefs.thresh_type, 0,0, 0.0,0.0,
@@ -164,7 +189,8 @@ char *default_prefs[] =
 "#------------------------------- Extraction ----------------------------------",
 " ",
 "DETECT_TYPE      CCD            # CCD (linear) or PHOTO (with gamma correction)",
-"DETECT_MINAREA   5              # minimum number of pixels above threshold",
+"DETECT_MINAREA   5              # min. # of pixels above threshold",
+"*DETECT_MAXAREA   0              # max. # of pixels above threshold (0=unlimited)",
 "*THRESH_TYPE      RELATIVE       # threshold type: RELATIVE (in sigmas)",
 "*                                # or ABSOLUTE (in ADUs)",
 "DETECT_THRESH    1.5            # <sigmas> or <threshold>,<ZP> in mag.arcsec-2",
@@ -188,6 +214,7 @@ char *default_prefs[] =
 "*",
 "*WEIGHT_TYPE      NONE           # type of WEIGHTing: NONE, BACKGROUND,",
 "*                                # MAP_RMS, MAP_VAR or MAP_WEIGHT",
+"*RESCALE_WEIGHTS  Y              # Rescale input weights/variances (Y/N)?",
 "*WEIGHT_IMAGE     weight.fits    # weight-map filename",
 "*WEIGHT_GAIN      Y              # modulate gain (E/ADU) with weights? (Y/N)",
 "*WEIGHT_THRESH                   # weight threshold[s] for bad pixels",
@@ -209,10 +236,12 @@ char *default_prefs[] =
 "*PHOT_FLUXFRAC    0.5            # flux fraction[s] used for FLUX_RADIUS",
 " ",
 "SATUR_LEVEL      50000.0        # level (in ADUs) at which arises saturation",
+"SATUR_KEY        SATURATE       # keyword for saturation level (in ADUs)",
 " ",
 "MAG_ZEROPOINT    0.0            # magnitude zero-point",
 "MAG_GAMMA        4.0            # gamma of emulsion (for photographic scans)",
 "GAIN             0.0            # detector gain in e-/ADU",
+"GAIN_KEY         GAIN           # keyword for detector gain in e-/ADU",
 "PIXEL_SCALE      1.0            # size of pixel in arcsec (0=use FITS WCS info)",
 " ",
 "#------------------------- Star/Galaxy Separation ----------------------------",
@@ -251,20 +280,22 @@ char *default_prefs[] =
 "*ASSOC_NAME       sky.list       # name of the ASCII file to ASSOCiate",
 "*ASSOC_DATA       2,3,4          # columns of the data to replicate (0=all)",
 "*ASSOC_PARAMS     2,3,4          # columns of xpos,ypos[,mag]",
+"*ASSOCCOORD_TYPE  PIXEL          # ASSOC coordinates: PIXEL or WORLD",
 "*ASSOC_RADIUS     2.0            # cross-matching radius (pixels)",
-"*ASSOC_TYPE       MAG_SUM        # ASSOCiation method: FIRST, NEAREST, MEAN,",
+"*ASSOC_TYPE       NEAREST        # ASSOCiation method: FIRST, NEAREST, MEAN,",
 "*                                # MAG_MEAN, SUM, MAG_SUM, MIN or MAX",
 "*ASSOCSELEC_TYPE  MATCHED        # ASSOC selection type: ALL, MATCHED or -MATCHED",
 "*",
 "#----------------------------- Miscellaneous ---------------------------------",
 " ",
 "VERBOSE_TYPE     NORMAL         # can be QUIET, NORMAL or FULL",
+"HEADER_SUFFIX    .head          # Filename extension for additional headers",
 "WRITE_XML        N              # Write XML file (Y/N)?",
 "XML_NAME         sex.xml        # Filename for XML output",
 "*XSL_URL          " XSL_URL,
 "*                                # Filename for XSL style-sheet",
 #ifdef USE_THREADS
-"*NTHREADS         0              # Number of simultaneous threads for",
+"NTHREADS          0              # Number of simultaneous threads for",
 "*                                # the SMP version of " BANNER,
 "*                                # 0 = automatic",
 #else
@@ -279,8 +310,9 @@ char *default_prefs[] =
 "*#--------------------------- Experimental Stuff -----------------------------",
 "*",
 "*PSF_NAME         default.psf    # File containing the PSF model",
-"*PSF_NMAX         9              # Max.number of PSFs fitted simultaneously",
-"*PSFDISPLAY_TYPE  SPLIT          # Catalog type for PSF-fitting: SPLIT or VECTOR",
+"*PSF_NMAX         1              # Max.number of PSFs fitted simultaneously",
+"*PATTERN_TYPE     RINGS-HARMONIC # can RINGS-QUADPOLE, RINGS-OCTOPOLE,",
+"*                                # RINGS-HARMONICS or GAUSS-LAGUERRE",
 "*SOM_NAME         default.som    # File containing Self-Organizing Map weights",
 ""
  };

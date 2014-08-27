@@ -1,18 +1,31 @@
 /*
- 				fitskey.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				fitskey.c
 *
-*	Part of:	The LDAC Tools
+* Functions related to the management of FITS table columns ("keys").
 *
-*	Author:		E.BERTIN, DeNIS/LDAC
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Functions related to the management of keys.
+*	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Last modify:	15/08/2003
+*	Copyright:		(C) 1995-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		13/06/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include	"config.h"
@@ -575,7 +588,7 @@ NOTES	This is approximately the same code as for read_keys.
 	A NULL keynames pointer means read ALL keys belonging to the table.
 	A NULL mask pointer means NO selection for reading.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	15/08/2003
+VERSION	13/06/2012
  ***/
 void	show_keys(tabstruct *tab, char **keynames, keystruct **keys, int nkeys,
 		BYTE *mask, FILE *stream,
@@ -691,10 +704,10 @@ void	show_keys(tabstruct *tab, char **keynames, keystruct **keys, int nkeys,
               if (banflag)
                 {
                 if (*key->unit)
-                  fprintf(stream, "# %3d %-19.19s %-47.47s [%s]\n",
+                  fprintf(stream, "# %3d %-15.15s %-47.47s [%s]\n",
                       n, key->name,key->comment, key->unit);
                 else
-                  fprintf(stream, "# %3d %-19.19s %.47s\n",
+                  fprintf(stream, "# %3d %-15.15s %.47s\n",
                       n, key->name,key->comment);
                 n += key->nbytes/t_size[key->ttype];
               }
@@ -730,10 +743,10 @@ void	show_keys(tabstruct *tab, char **keynames, keystruct **keys, int nkeys,
               if (banflag)
                 {
                 if (*key->unit)
-                  fprintf(stream, "# %3d %-19.19s %-47.47s [%s]\n",
+                  fprintf(stream, "# %3d %-15.15s %-47.47s [%s]\n",
                       n, key->name,key->comment, key->unit);
                 else
-                  fprintf(stream, "# %3d %-19.19s %.47s\n",
+                  fprintf(stream, "# %3d %-15.15s %.47s\n",
                       n, key->name,key->comment);
                 n += key->nbytes/t_size[key->ttype];
                 }
@@ -754,10 +767,10 @@ void	show_keys(tabstruct *tab, char **keynames, keystruct **keys, int nkeys,
         switch (o_type) {
         case SHOW_ASCII:
               if (*key->unit)
-                fprintf(stream, "#     %-19.19s %-47.47s [%s]\n",
+                fprintf(stream, "#     %-15.15s %-47.47s [%s]\n",
 	            	key->name,key->comment, key->unit);
               else
-                fprintf(stream, "#     %-19.19s %.47s\n",
+                fprintf(stream, "#     %-15.15s %.47s\n",
             		key->name,key->comment);
               break;
         case SHOW_SKYCAT:
@@ -845,6 +858,30 @@ void	show_keys(tabstruct *tab, char **keynames, keystruct **keys, int nkeys,
                 }
               break;
 
+            case T_LONGLONG:
+              for (j = 0; j<nelem; j++,ptr += esize)
+                {
+                if (key_col[k] == 0 || key_col[k] == j+1) {
+#ifdef HAVE_LONG_LONG_INT
+                   fprintf(stream, *key->printf?key->printf:"%lld",
+		         		*(SLONGLONG *)ptr);
+#else
+                   fprintf(stream, *key->printf?key->printf:"%d",
+		         		*(int *)ptr);
+#endif
+                   if (j < nelem-1) {
+                      switch (o_type) {
+                      case SHOW_ASCII:
+                         putc(' ', stream);
+                         break;
+                      case SHOW_SKYCAT:
+                         putc('\t', stream);
+                         break;
+                      }
+                      }
+                   }
+                }
+              break;
             case T_FLOAT:
               for (j = 0; j<nelem; j++,ptr += esize)
                 {
@@ -946,7 +983,7 @@ void	show_keys(tabstruct *tab, char **keynames, keystruct **keys, int nkeys,
   if (kflag)
     free(keys);
   if (o_type == SHOW_SKYCAT) 
-     fprintf(stream, skycattail);
+     fprintf(stream, skycattail, 1.0);
   return;
   }
 

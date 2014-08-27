@@ -1,18 +1,31 @@
 /*
- 				fitswrite.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				fitswrite.c
 *
-*	Part of:	The LDAC Tools
+* Low-level functions for writing LDAC FITS catalogs.
 *
-*	Author:		E.BERTIN, DeNIS/LDAC
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	low-level functions for writing LDAC FITS catalogs.
+*	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Last modify:	12/07/2006
+*	Copyright:		(C) 1995-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		27/08/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef	HAVE_CONFIG_H
 #include "config.h"
@@ -75,7 +88,7 @@ INPUT	pointer to the catalog structure,
 OUTPUT	-.
 NOTES	-.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	09/09/2003
+VERSION	13/06/2012
  ***/
 void	save_tab(catstruct *cat, tabstruct *tab)
 
@@ -84,14 +97,12 @@ void	save_tab(catstruct *cat, tabstruct *tab)
    keystruct	*key;
    tabstruct	*keytab;
    KINGSIZE_T	tabsize;
-   KINGLONG	size;
+   long		size;
    int		b,j,k,o, nbytes,nkey,nobj,spoonful,
 		tabflag, larrayin,larrayout;
    char		*buf, *inbuf, *outbuf, *fptr,*ptr;
    int		esize;
 
-/*  Make the table parameters reflect its content*/
-  update_tab(tab);
 /*  The header itself*/
   tabflag = save_head(cat, tab)==RETURN_OK?1:0;
 /*  Allocate memory for the output buffer */
@@ -265,7 +276,7 @@ INPUT	catalog structure,
 OUTPUT	-.
 NOTES	-.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	26/09/2004
+VERSION	02/11/2009
  ***/
 void	init_writeobj(catstruct *cat, tabstruct *tab, char **pbuf)
 
@@ -273,8 +284,6 @@ void	init_writeobj(catstruct *cat, tabstruct *tab, char **pbuf)
    keystruct	*key;
    int		k;
 
-/* Make the table parameters reflect its content*/
-  update_tab(tab);
 /* The header itself */
   if (save_head(cat, tab) != RETURN_OK)
     error(EXIT_FAILURE, "*Error*: Not a binary table: ", tab->extname);
@@ -304,30 +313,31 @@ PURPOSE	Write one individual source in a FITS table
 INPUT	Table structure,
 	pointer to the temporary buffer.
 OUTPUT	-.
-NOTES	-.
+NOTES	key content is destroyed (actually, byte-swapped) on output.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	26/09/2004
+VERSION	27/08/2012
  ***/
 int	write_obj(tabstruct *tab, char *buf)
 
   {
-   keystruct	*key;
-   char		*pin, *pout;
-   int		b,k;
-   int		esize;
+   keystruct    *key;
+   char         *pin, *pout, *pout2;
+   int          b,k;
+   int          esize;
 
   key = tab->key;
   pout = buf;
   for (k=tab->nkey; k--; key = key->nextkey)
     {
     pin = key->ptr;
+    pout2 = pout;
+    for (b=key->nbytes; b--;)
+      *(pout++) = *(pin++);
     if (bswapflag)
       {
       esize = t_size[key->ttype];
-      swapbytes(pin, esize, key->nbytes/esize);
+      swapbytes(pout2, esize, key->nbytes/esize);
       }
-    for (b=key->nbytes; b--;)
-      *(pout++) = *(pin++);
     }
 
   QFWRITE(buf, *tab->naxisn, tab->cat->file, tab->cat->filename);
@@ -385,7 +395,7 @@ INPUT	Output stream
 OUTPUT	-.
 NOTES	-.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	12/07/2006
+VERSION	13/06/2012
  ***/
 void	print_obj(FILE *stream, tabstruct *tab)
 
@@ -421,6 +431,11 @@ void	print_obj(FILE *stream, tabstruct *tab)
           break;
         case T_LONG:
           fprintf(stream, *key->printf?key->printf:"%d", *(int *)ptr);
+          if (i)
+            putc(' ', stream);
+          break;
+        case T_LONGLONG:
+          fprintf(stream, *key->printf?key->printf:"%lld", *(SLONGLONG *)ptr);
           if (i)
             putc(' ', stream);
           break;
@@ -462,7 +477,7 @@ INPUT	Output stream
 OUTPUT	-.
 NOTES	-.
 AUTHOR	G. Tissier & E.Bertin (IAP)
-VERSION	12/07/2006
+VERSION	13/06/2012
  ***/
 void	voprint_obj(FILE *stream, tabstruct *tab)
 
@@ -502,6 +517,11 @@ void	voprint_obj(FILE *stream, tabstruct *tab)
           break;
         case T_LONG:
           fprintf(stream, *key->printf?key->printf:"%d", *(int *)ptr);
+          if (i)
+            putc(' ', stream);
+          break;
+        case T_LONGLONG:
+          fprintf(stream, *key->printf?key->printf:"%lld", *(SLONGLONG *)ptr);
           if (i)
             putc(' ', stream);
           break;

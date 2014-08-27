@@ -1,18 +1,30 @@
 /*
- 				weight.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				weight.c
 *
-*	Part of:	SExtractor
+* Handle external weight maps.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Handling of weight maps.
+*	This file part of:	SExtractor
 *
-*	Last modify:	28/11/2003
+*	Copyright:		(C) 1997-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		11/10/2010
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -26,6 +38,7 @@
 #include	"define.h"
 #include	"globals.h"
 #include	"field.h"
+#include	"plist.h"
 #include	"weight.h"
 
 /******************************* newweight **********************************/
@@ -123,4 +136,43 @@ void	weight_to_var(picstruct *wfield, PIXTYPE *data, int npix)
 
   return;
   }
+
+
+/******************************** weight_count *******************************
+PROTO	void weight_count(objstruct *obj, pliststruct *pixel)
+PURPOSE	Count pixels with zero weights.
+INPUT   Objstruct pointer,
+	pixel list pointer.
+OUTPUT  -.
+NOTES   -.
+AUTHOR  E. Bertin (IAP)
+VERSION 01/10/2009
+ ***/
+void	weight_count(objstruct *obj, pliststruct *pixel)
+
+  {
+   pliststruct	*pixt;
+   int		i, nw,ndw, wflag;
+
+  nw = ndw = wflag = 0;
+
+  for (i=obj->firstpix; i!=-1; i=PLIST(pixt,nextpix))
+    {
+    pixt = pixel+i;
+    if (PLISTFLAG(pixt, wflag) & OBJ_LOWWEIGHT)
+      nw++;
+    if (PLISTFLAG(pixt, wflag) & OBJ_LOWDWEIGHT)
+      ndw++;
+    }
+
+  obj->nzwpix = nw;
+  obj->nzdwpix = ndw;
+  obj->wflag = nw? OBJ_LOWWEIGHT : 0;
+  if (ndw)
+    obj->wflag |= OBJ_LOWDWEIGHT;
+
+  return;
+  }
+
+
 

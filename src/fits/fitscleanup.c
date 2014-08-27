@@ -1,18 +1,31 @@
 /*
-                                  fitscleanup.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				fitscleanup.c
 *
-*       Part of:        The LDAC Tools
+* Signal-catching routines to clean-up temporary files.
 *
-*       Author:         E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*       Contents:       Signal-catching routines to clean-up temporary files
+*	This file part of:	AstrOmatic FITS/LDAC library
 *
-*       Last modify:    10/01/2003
+*	Copyright:		(C) 1995-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		09/10/2010
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include	"config.h"
@@ -96,7 +109,7 @@ INPUT	pointer to filename char string.
 OUTPUT	-.
 NOTES	-.
 AUTHOR	E. Bertin (IAP)
-VERSION	21/08/2000
+VERSION	16/07/2007
  ***/
 void	remove_cleanupfilename(char *filename)
   {
@@ -113,22 +126,17 @@ void	remove_cleanupfilename(char *filename)
       {
 /* Match found: update the list and free memory is necessary*/
       filename3 = filename2 - 1;
+      free(*filename3);
       for (j=i; j--;)
         *(filename3++) = *(filename2++);
       if (!((--cleanup_nfiles)%CLEANUP_NFILES))
         {
         if (cleanup_nfiles)
           {
-          filename2 = cleanup_filename + cleanup_nfiles;
-          for (i=CLEANUP_NFILES; i--;)
-            free(*(filename2++));
           QREALLOC(cleanup_filename, char *, cleanup_nfiles);
           }
         else
-          {
-          free(*cleanup_filename);
           free(cleanup_filename);
-          }
         }
       break;
       }

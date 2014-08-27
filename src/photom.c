@@ -1,18 +1,30 @@
- /*
- 				photom.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				photom.c
 *
-*	Part of:	SExtractor
+* Compute magnitudes and other photometric parameters.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Compute magnitudes and other photometrical parameters.
+*	This file part of:	SExtractor
 *
-*	Last modify:	24/08/2005
+*	Copyright:		(C) 1993-2011 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		08/11/2011
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -61,7 +73,7 @@ void  computeaperflux(picstruct *field, picstruct *wfield,
   corrflag = (prefs.mask_type==MASK_CORRECT);
   gainflag = wfield && prefs.weightgain_flag;
   var = backnoise2 = field->backsig*field->backsig;
-  gain = prefs.gain;
+  gain = field->gain;
 /* Integration radius */
   raper = prefs.apert[i]/2.0;
   raper2 = raper*raper;
@@ -235,7 +247,7 @@ void  computepetroflux(picstruct *field, picstruct *dfield, picstruct *wfield,
   mx = obj->mx;
   my = obj->my;
   var = backnoise2 = field->backsig*field->backsig;
-  gain = prefs.gain;
+  gain = field->gain;
   pflag = (prefs.detect_type==PHOTO)? 1:0;
   corrflag = (prefs.mask_type==MASK_CORRECT);
   gainflag = wfield && prefs.weightgain_flag;
@@ -534,7 +546,7 @@ void  computeautoflux(picstruct *field, picstruct *dfield, picstruct *wfield,
   mx = obj->mx;
   my = obj->my;
   var = backnoise2 = field->backsig*field->backsig;
-  gain = prefs.gain;
+  gain = field->gain;
   pflag = (prefs.detect_type==PHOTO)? 1:0;
   corrflag = (prefs.mask_type==MASK_CORRECT);
   gainflag = wfield && prefs.weightgain_flag;
@@ -865,7 +877,7 @@ void  computemags(picstruct *field, objstruct *obj)
 			 1.086*obj2->fluxerr_somfit/obj2->flux_somfit
 			:99.0;
 
-/* Mag. PROFILE */
+/* Mag. models */
   if (FLAG(obj2.mag_prof))
     obj2->mag_prof = obj2->flux_prof>0.0?
 			 -2.5*log10(obj2->flux_prof) + prefs.mag_zeropoint
@@ -873,6 +885,153 @@ void  computemags(picstruct *field, objstruct *obj)
   if (FLAG(obj2.magerr_prof))
     obj2->magerr_prof = obj2->flux_prof>0.0?
 			 1.086*obj2->fluxerr_prof/obj2->flux_prof
+			:99.0;
+
+  if (FLAG(obj2.magcor_prof))
+    obj2->magcor_prof = obj2->fluxcor_prof>0.0?
+			 -2.5*log10(obj2->fluxcor_prof) + prefs.mag_zeropoint
+			:99.0;
+  if (FLAG(obj2.magcorerr_prof))
+    obj2->magcorerr_prof = obj2->fluxcor_prof>0.0?
+			 1.086*obj2->fluxcorerr_prof/obj2->fluxcor_prof
+			:99.0;
+
+  if (FLAG(obj2.mumax_prof))
+    obj2->mumax_prof = obj2->peak_prof > 0.0 ?
+		-2.5*log10((obj2->peak_prof)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.mueff_prof))
+    obj2->mueff_prof = obj2->fluxeff_prof > 0.0 ?
+		-2.5*log10((obj2->fluxeff_prof)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.mumean_prof))
+    obj2->mumean_prof = obj2->fluxmean_prof > 0.0 ?
+		-2.5*log10((obj2->fluxmean_prof)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.prof_dirac_mag))
+    obj2->prof_dirac_mag = obj2->prof_dirac_flux>0.0?
+			 -2.5*log10(obj2->prof_dirac_flux)
+			+ prefs.mag_zeropoint
+			:99.0;
+
+  if (FLAG(obj2.prof_dirac_magerr))
+    obj2->prof_dirac_magerr = obj2->prof_dirac_flux>0.0?
+			 1.086*obj2->prof_dirac_fluxerr
+				/ obj2->prof_dirac_flux
+			:99.0;
+
+  if (FLAG(obj2.prof_spheroid_mag))
+    obj2->prof_spheroid_mag = obj2->prof_spheroid_flux>0.0?
+			 -2.5*log10(obj2->prof_spheroid_flux)
+			+ prefs.mag_zeropoint
+			:99.0;
+
+  if (FLAG(obj2.prof_spheroid_mumax))
+    obj2->prof_spheroid_mumax = obj2->prof_spheroid_peak > 0.0 ?
+		-2.5*log10((obj2->prof_spheroid_peak)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.prof_spheroid_mueff))
+    obj2->prof_spheroid_mueff = obj2->prof_spheroid_fluxeff > 0.0 ?
+		-2.5*log10((obj2->prof_spheroid_fluxeff)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.prof_spheroid_mumean))
+    obj2->prof_spheroid_mumean = obj2->prof_spheroid_fluxmean > 0.0 ?
+		-2.5*log10((obj2->prof_spheroid_fluxmean)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.prof_spheroid_magerr))
+    obj2->prof_spheroid_magerr = obj2->prof_spheroid_flux>0.0?
+			 1.086*obj2->prof_spheroid_fluxerr
+				/ obj2->prof_spheroid_flux
+			:99.0;
+
+  if (FLAG(obj2.prof_disk_mag))
+    obj2->prof_disk_mag = obj2->prof_disk_flux>0.0?
+			 -2.5*log10(obj2->prof_disk_flux)
+			+ prefs.mag_zeropoint
+			:99.0;
+  if (FLAG(obj2.prof_disk_magerr))
+    obj2->prof_disk_magerr = obj2->prof_disk_flux>0.0?
+			 1.086*obj2->prof_disk_fluxerr
+				/ obj2->prof_disk_flux
+			:99.0;
+
+  if (FLAG(obj2.prof_disk_mumax))
+    obj2->prof_disk_mumax = obj2->prof_disk_peak > 0.0 ?
+		-2.5*log10((obj2->prof_disk_peak)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.prof_disk_mueff))
+    obj2->prof_disk_mueff = obj2->prof_disk_fluxeff > 0.0 ?
+		-2.5*log10((obj2->prof_disk_fluxeff)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.prof_disk_mumean))
+    obj2->prof_disk_mumean = obj2->prof_disk_fluxmean > 0.0 ?
+		-2.5*log10((obj2->prof_disk_fluxmean)
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
+		: 99.0;
+
+  if (FLAG(obj2.prof_bar_mag))
+    obj2->prof_bar_mag = obj2->prof_bar_flux>0.0?
+			 -2.5*log10(obj2->prof_bar_flux)
+			+ prefs.mag_zeropoint
+			:99.0;
+  if (FLAG(obj2.prof_bar_magerr))
+    obj2->prof_bar_magerr = obj2->prof_bar_flux>0.0?
+			 1.086*obj2->prof_bar_fluxerr
+				/obj2->prof_bar_flux
+			:99.0;
+
+  if (FLAG(obj2.prof_arms_mag))
+    obj2->prof_arms_mag = obj2->prof_arms_flux>0.0?
+			 -2.5*log10(obj2->prof_arms_flux)
+			+ prefs.mag_zeropoint
+			:99.0;
+  if (FLAG(obj2.prof_arms_magerr))
+    obj2->prof_arms_magerr = obj2->prof_arms_flux>0.0?
+			 1.086*obj2->prof_arms_fluxerr
+				/obj2->prof_arms_flux
+			:99.0;
+
+  if (FLAG(obj2.mag_dprof))
+    obj2->mag_dprof = obj2->flux_dprof>0.0?
+			 -2.5*log10(obj2->flux_dprof) + prefs.mag_zeropoint
+			:99.0;
+  if (FLAG(obj2.magerr_dprof))
+    obj2->magerr_dprof = obj2->flux_dprof>0.0?
+			 1.086*obj2->fluxerr_dprof/obj2->flux_dprof
 			:99.0;
 
 /* Mag. WINdowed */
@@ -894,18 +1053,23 @@ void  computemags(picstruct *field, objstruct *obj)
 			 1.086*obj2->fluxerr_galfit/obj2->flux_galfit
 			:99.0;
 
-/* SB units */
+/* Other surface brightnesses */
   if (FLAG(obj2.maxmu))
     outobj2.maxmu = obj->peak > 0.0 ?
 		-2.5*log10((obj->peak)
-		 / (field->pixscale * field->pixscale)) + prefs.mag_zeropoint
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
 		: 99.0;
 
   if (FLAG(obj2.threshmu))
     obj2->threshmu = obj->thresh > 0.0 ?
 		-2.5*log10((obj->thresh)
-		 / (field->pixscale * field->pixscale)) + prefs.mag_zeropoint
+		 / (prefs.pixel_scale? field->pixscale*field->pixscale
+				: obj2->pixscale2 * 3600.0*3600.0))
+		+ prefs.mag_zeropoint
 		: 99.0;
+
 
   return;
   }

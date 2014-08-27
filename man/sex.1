@@ -1,6 +1,6 @@
-.TH SEXTRACTOR "1" "July 2006" "SWarp 2.5.0" "User Commands"
+.TH SEXTRACTOR "1" "December 2013" "SExtractor 2.19.5" "User Commands"
 .SH NAME
-sex \- extract a source catalog from an astronomical FITS image
+sex \- extract a source catalogue from an astronomical FITS image
 .SH SYNOPSIS
 .B sex \fIimage\fR [\fI-c configuration-file\fR]
 .RS
@@ -18,7 +18,7 @@ SExtractor is a program that builds a catalogue of objects from an astronomical
 image. Although it is particularly oriented towards reduction of large scale
 galaxy-survey data, it performs rather well on moderately crowded star fields.
 .RE
-See http://terapix.iap.fr/soft/sextractor for more details.
+See http://astromatic.net/software/sextractor for more details.
 .SS "Operation modes:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -29,19 +29,26 @@ print version number, then exit
 .TP
 \fB\-d\fR, \fB\-\-dump\fR
 dump a default configuration file
-.SH AUTHOR
-Written by Emmanuel Bertin (Institut d'Astrophysique de Paris and Observatoire de Paris).
-.PP
-Copyright 1994-2005 Emmanuel Bertin
-.RE
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-.SH "REPORTING BUGS"
-Report bugs to <sextractor@iap.fr>.
-.SH "SEE ALSO"
-.BR swarp (1)
-.PP
+.SH MANUAL
 The full documentation for
 .B SExtractor
-is maintained as a Postscript manual available at
-.B http://terapix.iap.fr/soft/sextractor
+is maintained as a PDF manual available at
+.B http://astromatic.net/software/sextractor
+.SH "REPORTING BUGS"
+Please report bugs to the SExtractor software forum at
+http://astromatic.net/forum.
+.SH "SEE ALSO"
+.BR
+eye(1), missfits(1), psfex(1), scamp(1), sky(1), stiff(1), stuff(1), swarp (1),
+ww(1)
+.SH AUTHORS
+Written by Emmanuel Bertin (Institut d'Astrophysique de Paris)
+.PP
+.SH LICENSE
+SExtractor is licensed under the terms of the General Public License (GPL),
+version 3.
+.SH COPYRIGHT
+.PP
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+

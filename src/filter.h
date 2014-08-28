@@ -1,19 +1,30 @@
- /*
- 				filter.h
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				filter.h
 *
-*	Part of:	SExtractor
+* Include file for filter.c.
 *
-*	Author:		E.BERTIN, IAP/Leiden
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	functions dealing with on-line filtering of the image
-*			(for detection).
+*	This file part of:	SExtractor
 *
-*	Last modify:	09/11/99
+*	Copyright:		(C) 1993-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		11/10/2010
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 /*------------------------------- definitions -------------------------------*/
 
@@ -35,11 +46,11 @@ typedef struct structfilter
 filterstruct	*thefilter;
 
 /*------------------------------- functions ---------------------------------*/
-void		convolve(picstruct *, PIXTYPE *),
-		convolve_image(picstruct *field, double *vig1,
-				double *vig2, int width, int height),
-		filter(picstruct *, PIXTYPE *),
-		neurfilter(picstruct *, PIXTYPE *),
+void		convolve(picstruct *, PIXTYPE *, int y),
+		convolve_image(picstruct *field, float *vig1,
+				float *vig2, int width, int height),
+		filter(picstruct *, PIXTYPE *, int y),
+		neurfilter(picstruct *, PIXTYPE *, int y),
 		endfilter(void),
 		getfilter(char *filename);
 

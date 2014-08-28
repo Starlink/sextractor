@@ -1,18 +1,31 @@
 /*
- 				fitstab.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				fitstab.c
 *
-*	Part of:	The LDAC Tools
+* Handle FITS extensions and tables.
 *
-*	Author:		E.BERTIN, DeNIS/LDAC
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	general functions for handling LDAC FITS catalogs.
+*	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Last modify:	15/08/2003
+*	Copyright:		(C) 1995-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		11/09/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef	HAVE_CONFIG_H
 #include "config.h"
@@ -36,7 +49,7 @@ NOTES	-.
 AUTHOR	E.R. Deul(Leiden observatory),
 	E. Bertin (IAP & Leiden observatory): return value modified.
 	E.R. Deul(Leiden observatory): output units
-VERSION	15/08/2003
+VERSION	28/10/2009
  ***/
 int about_tab(catstruct *cat, char *tabname, FILE *stream)
 {
@@ -60,6 +73,7 @@ int about_tab(catstruct *cat, char *tabname, FILE *stream)
     case T_BYTE: fprintf(stream,"Byte"); break;
     case T_SHORT: fprintf(stream,"Short Int"); break;
     case T_LONG: fprintf(stream,"Long Int"); break;
+    case T_LONGLONG: fprintf(stream,"Long Long Int"); break;
     case T_FLOAT: fprintf(stream,"Float"); break;
     case T_DOUBLE: fprintf(stream,"Double"); break;
     case T_STRING: fprintf(stream,"String"); break;
@@ -556,7 +570,7 @@ INPUT	Table structure.
 OUTPUT	RETURN_OK if tab is a binary table, or RETURN_ERROR otherwise.
 NOTES	The headbuf pointer in the catstruct might be reallocated.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	08/02/97
+VERSION	11/09/2012
  ***/
 int	update_tab(tabstruct *tab)
 
@@ -599,7 +613,7 @@ int	update_tab(tabstruct *tab)
     key = key->nextkey;
     }
 
-  tab->tabsize = nobj*nbytes;
+  tab->tabsize = (KINGSIZE_T)nobj*nbytes;
   tab->naxisn[0] = nbytes;
   tab->naxisn[1] = nobj;
   tab->tfields = tab->nkey;

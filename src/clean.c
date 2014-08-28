@@ -1,19 +1,30 @@
- /*
- 				clean.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				clean.c
 *
-*	Part of:	SExtractor
+* Remove spurious detections from the catalogue.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	functions that remove spurious detections from the
-*			catalog
+*	This file part of:	SExtractor
 *
-*	Last modify:	15/02/2005
+*	Copyright:		(C) 1993-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		11/10/2010
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -210,7 +221,7 @@ void	addcleanobj(objstruct *objin)
   hh1 = hh1 > 0.0 ? 1/sqrt(3*hh1) : 0.0;
 /* ... then from the isophotal limit, which should not be TOO different... */
   hh2 = (objin->ymax-objin->ymin+1.0);
-  margin = (int)((hh1>hh2?hh1:hh2)*MARGIN_SCALE+1.49999);
+  margin = (int)((hh1>hh2?hh1:hh2)*MARGIN_SCALE+MARGIN_OFFSET+0.49999);
   objin->ycmax = objin->ymax+margin;
 /* ... and finally compare with the predefined margin */
   if ((y=(int)(objin->my+0.49999)+prefs.cleanmargin)>objin->ycmax)
@@ -250,15 +261,6 @@ void	mergeobject(objstruct *objslave,objstruct *objmaster)
           *pix = colormaster;
     }
 
-  if (FLAG(obj.flux_prof))
-    {
-    objmaster->flux_prof = (objmaster->flux_prof*objmaster->fdflux
-			+ objslave->flux_prof*objslave->fdflux)
-			/ (objmaster->fdflux + objslave->fdflux);
-    objmaster->fluxerr_prof = (objmaster->fluxerr_prof*objmaster->fdflux
-			+ objslave->fluxerr_prof*objslave->fdflux)
-			/ (objmaster->fdflux + objslave->fdflux);
-    }
   objmaster->fdnpix += objslave->fdnpix;
   objmaster->dnpix += objslave->dnpix;
   objmaster->fdflux += objslave->fdflux;

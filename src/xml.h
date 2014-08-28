@@ -1,18 +1,30 @@
- /*
- 				xml.h
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				xml.h
 *
-*	Part of:	SExtractor
+* Include file for xml.c.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	XML logging.
+*	This file part of:	SExtractor
 *
-*	Last modify:	14/07/2005
+*	Copyright:		(C) 2006-2013 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		25/04/2013
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include	"config.h"
@@ -23,21 +35,15 @@
 #endif
 
 /*----------------------------- Internal constants --------------------------*/
-/*
-#define	XSL_URL	"file:///home/bertin/sources/sex/xsl/sex.xsl"
-*/
 #ifndef XSL_URL
 #define	XSL_URL	"."
 #endif
-/* Alternate XSLT file at TERAPIX: */
-/* will not work with recent browsers because of security limitations */
-/*
-#define	XSL_URL_ALT	"http://terapix.iap.fr/cplt/xsl/sex.xsl"
-*/
+
 /*--------------------------------- typedefs --------------------------------*/
 typedef struct
   {
   int		currext;
+  int		headflag[2];				/* external headers? */
   int		ndetect;
   int		ntotal;
   char 		ext_date[16],ext_time[16];		/* date and time */
@@ -49,6 +55,8 @@ typedef struct
   float		thresh[2];				/* thresholds (ADU) */
   double	pixscale[2];				/* pixel scale (deg2) */
   double	epoch[2];				/* epoch of coords */
+  double	gain[2];				/* gain (e-/ADU) */
+  double	satur_level[2];				/* saturation level */
   }	xmlstruct;
 
 /*------------------------------- functions ---------------------------------*/
@@ -60,6 +68,8 @@ extern int		end_xml(void),
 				picstruct *wfield),
 			write_xml(char *filename),
 			write_xml_header(FILE *file),
-			write_xml_meta(FILE *file, char *error);
+			write_xml_meta(FILE *file, char *error),
+			write_xmlconfigparam(FILE *file, char *name, char *unit,
+				char *ucd, char *format);
 
 extern void		write_xmlerror(char *filename, char *error);

@@ -1,18 +1,31 @@
 /*
- 				fitsbody.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*				fitsbody.c
 *
-*	Part of:	The LDAC Tools
+* Handle memory allocation for FITS bodies.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:       Handle memory allocation for FITS bodies.
+*	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Last modify:	10/10/2007
+*	Copyright:		(C) 1995-2013 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	AstrOmatic software is free software: you can redistribute it and/or
+*	modify it under the terms of the GNU General Public License as
+*	published by the Free Software Foundation, either version 3 of the
+*	License, or (at your option) any later version.
+*	AstrOmatic software is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with AstrOmatic software.
+*	If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		28/03/2013
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include	"config.h"
@@ -137,6 +150,106 @@ PIXTYPE	*alloc_body(tabstruct *tab, void (*func)(PIXTYPE *ptr, int npix))
   }
 
 
+/******* alloc_ibody ***********************************************************
+PROTO	FLAGTYPE *alloc_ibody(tabstruct *tab,
+			void (*func)(FLAGTYPE *ptr, int npix))
+PURPOSE	Allocate memory for and read a FITS integer data body (read-only).
+	If not enough RAM is available, a swap file is created.
+INPUT	Table (tab) structure.
+OUTPUT	Pointer to the mapped data if OK, or NULL otherwise.
+NOTES	The file pointer must be positioned at the beginning of the data.
+AUTHOR	E. Bertin (IAP)
+VERSION	30/01/2012
+ ***/
+FLAGTYPE	*alloc_ibody(tabstruct *tab,
+			void (*func)(FLAGTYPE *ptr, int npix))
+  {
+   FILE		*file;
+   FLAGTYPE	*buffer;
+   size_t	npix, size, sizeleft, spoonful;
+
+  if (!body_ramflag)
+    {
+    body_ramleft = body_maxram;
+    body_vramleft = body_maxvram;
+    body_ramflag = 1;
+    }
+
+/* Return a NULL pointer if size is zero */
+  if (!tab->tabsize)
+    return (FLAGTYPE *)NULL;
+
+/* Check that there is a cat parent structure and that the file is open */
+   if (tab->cat && !tab->cat->file)
+     error(EXIT_FAILURE, "*Internal Error*: Cannot access table: ",
+			tab->extname);
+
+/* Decide if the data will go in physical memory or on swap-space */
+  npix = tab->tabsize/tab->bytepix;
+  size = npix*sizeof(FLAGTYPE);
+  if (size < body_ramleft)
+    {
+/*-- There should be enough RAM left: try to do a malloc() */
+    if ((tab->bodybuf = malloc(size)))
+      {
+      QFSEEK(tab->cat->file, tab->bodypos, SEEK_SET, tab->cat->filename);
+      read_ibody(tab, (FLAGTYPE *)tab->bodybuf, npix);
+/*---- Apply pixel processing */
+      if (func)
+        (*func)((FLAGTYPE *)tab->bodybuf, npix);
+      body_ramleft -= size;
+
+      return (FLAGTYPE *)tab->bodybuf;
+      }
+    else
+      tab->bodybuf = NULL;
+    }
+
+  if (size < body_vramleft)
+    {
+/*-- Convert and copy the data to a swap file, and mmap() it */
+    if (!(buffer = malloc(DATA_BUFSIZE)))
+      return NULL;
+    sprintf(tab->swapname, "%s/vm%05ld_%05x.tmp",
+		body_swapdirname, (long)getpid(),
+		(unsigned int)++body_vmnumber) ;
+    if (!(file=fopen(tab->swapname, "wb+")))
+      error(EXIT_FAILURE, "*Error*: cannot create swap-file ", tab->swapname);
+    add_cleanupfilename(tab->swapname);
+    spoonful = (size%DATA_BUFSIZE);
+    if (!spoonful)
+      spoonful = DATA_BUFSIZE;
+    QFSEEK(tab->cat->file, tab->bodypos, SEEK_SET, tab->cat->filename);
+    read_ibody(tab, buffer, spoonful/sizeof(FLAGTYPE));
+/*-- Apply pixel processing */
+    if (func)
+      (*func)(buffer, spoonful/sizeof(FLAGTYPE));
+    QFWRITE(buffer, spoonful, file, tab->swapname);
+    for (sizeleft = size; sizeleft -= spoonful;)
+      {
+      read_ibody(tab, buffer, (spoonful=DATA_BUFSIZE)/sizeof(FLAGTYPE));
+/*--- Apply pixel processing */
+      if (func)
+        (*func)(buffer, spoonful/sizeof(FLAGTYPE));
+      QFWRITE(buffer, spoonful, file, tab->swapname);
+      }
+    free(buffer);
+    tab->bodybuf = mmap(NULL,size,PROT_READ,MAP_SHARED,fileno(file),(off_t)0);
+    fclose(file);
+    tab->swapflag = 1;
+    body_vramleft -= size;
+
+/*-- Memory mapping problem */
+    if (tab->bodybuf == (void *)-1)
+      return NULL;
+    return (FLAGTYPE *)tab->bodybuf;
+    }
+
+/* If no memory left at all: forget it! */
+  return NULL;
+  }
+
+
 /******* free_body ************************************************************
 PROTO	void free_body(tabstruct *tab)
 PURPOSE	Free FITS body data.
@@ -191,7 +304,7 @@ INPUT	A pointer to the tab structure,
 OUTPUT	-.
 NOTES	.
 AUTHOR	E. Bertin (IAP)
-VERSION	10/10/2007
+VERSION	28/03/2013
  ***/
 void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
   {
@@ -202,6 +315,10 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
 			cval, cblank;
   unsigned short	suval, sublank;
   short			val16, sval, sblank;
+#ifdef HAVE_LONG_LONG_INT
+  ULONGLONG		lluval, llublank;
+  SLONGLONG		llval, llblank;
+#endif
   unsigned int		iuval, iublank;
   int			curval, dval, blankflag, ival, iblank;
   
@@ -236,6 +353,7 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
               if (tab->bitsgn)
 	        {
                 cblank = (char)tab->blank;
+#pragma ivdep
                 for (i=spoonful; i--;)
                   *(ptr++) = ((cval = *(bufdata++)) == cblank)?
 			-BIG : cval*bs + bz;
@@ -243,6 +361,7 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
               else
 	        {
                 cublank = (unsigned char)tab->blank;
+#pragma ivdep
                 for (i=spoonful; i--;)
                   *(ptr++) = ((cuval=*((unsigned char *)bufdata++))==cublank)?
 			-BIG : cuval*bs + bz;
@@ -251,9 +370,11 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
             else
 	      {
               if (tab->bitsgn)
+#pragma ivdep
                 for (i=spoonful; i--;)
                   *(ptr++) = *(bufdata++)*bs + bz;
               else
+#pragma ivdep
                 for (i=spoonful; i--;)
                   *(ptr++) = *((unsigned char *)bufdata++)*bs + bz;
 	      }
@@ -267,6 +388,7 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
               if (tab->bitsgn)
                 {
                 sblank = (short)tab->blank;
+#pragma ivdep
                 for (i=spoonful; i--; bufdata += sizeof(short))
                   *(ptr++) = ((sval = *((short *)bufdata)) == sblank)?
 			-BIG : sval*bs + bz;
@@ -274,6 +396,7 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
               else
                 {
                 sublank = (unsigned short)tab->blank;
+#pragma ivdep
                 for (i=spoonful; i--; bufdata += sizeof(unsigned short))
                   *(ptr++) = ((suval=*((unsigned short *)bufdata)) == sublank)?
 			-BIG : suval*bs + bz;
@@ -282,9 +405,11 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
             else
 	      {
               if (tab->bitsgn)
+#pragma ivdep
                 for (i=spoonful; i--; bufdata += sizeof(short))
                   *(ptr++) = *((short *)bufdata)*bs + bz;
               else
+#pragma ivdep
                 for (i=spoonful; i--; bufdata += sizeof(unsigned short))
                   *(ptr++) = *((unsigned short *)bufdata)*bs + bz;
 	      }
@@ -298,6 +423,7 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
               if (tab->bitsgn)
                 {
                 iblank = (int)tab->blank;
+#pragma ivdep
                 for (i=spoonful; i--; bufdata += sizeof(int))
                   *(ptr++) = ((ival = *((int *)bufdata)) == iblank)?
 			-BIG : ival*bs + bz;
@@ -305,6 +431,7 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
               else
                 {
                 iublank = (unsigned int)tab->blank;
+#pragma ivdep
                 for (i=spoonful; i--; bufdata += sizeof(unsigned int))
                   *(ptr++) = ((iuval = *((unsigned int *)bufdata)) == iublank)?
 			-BIG : iuval*bs + bz;
@@ -313,26 +440,65 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
             else
 	      {
               if (tab->bitsgn)
+#pragma ivdep
                 for (i=spoonful; i--; bufdata += sizeof(int))
                   *(ptr++) = *((int *)bufdata)*bs + bz;
               else
+#pragma ivdep
                 for (i=spoonful; i--; bufdata += sizeof(unsigned int))
                   *(ptr++) = *((unsigned int *)bufdata)*bs + bz;
 	      }
             break;
 
+#ifdef HAVE_LONG_LONG_INT
+          case BP_LONGLONG:
+            if (bswapflag)
+              swapbytes(bufdata, 8, spoonful);
+            if (blankflag)
+	      {
+              if (tab->bitsgn)
+                {
+                llblank = (SLONGLONG)tab->blank;
+#pragma ivdep
+                for (i=spoonful; i--; bufdata += sizeof(SLONGLONG))
+                  *(ptr++) = ((llval = *((SLONGLONG *)bufdata)) == llblank)?
+			-BIG : llval*bs + bz;
+                }
+              else
+                {
+                llublank = (ULONGLONG)tab->blank;
+#pragma ivdep
+                for (i=spoonful; i--; bufdata += sizeof(ULONGLONG))
+                  *(ptr++) = ((lluval = *((ULONGLONG *)bufdata)) == llublank)?
+			-BIG : lluval*bs + bz;
+                }
+	      }
+            else
+	      {
+              if (tab->bitsgn)
+#pragma ivdep
+                for (i=spoonful; i--; bufdata += sizeof(SLONGLONG))
+                  *(ptr++) = *((SLONGLONG *)bufdata)*bs + bz;
+              else
+#pragma ivdep
+                for (i=spoonful; i--; bufdata += sizeof(ULONGLONG))
+                  *(ptr++) = *((ULONGLONG *)bufdata)*bs + bz;
+	      }
+            break;
+#endif
           case BP_FLOAT:
             if (bswapflag)
               swapbytes(bufdata, 4, spoonful);
+#pragma ivdep
             for (i=spoonful; i--; bufdata += sizeof(float))
               *(ptr++) = ((0x7f800000&*(unsigned int *)bufdata) == 0x7f800000)?
 			-BIG : *((float *)bufdata)*bs + bz;
             break;
-
           case BP_DOUBLE:
             if (bswapflag)
 	      {
               swapbytes(bufdata, 8, spoonful);
+#pragma ivdep
               for (i=spoonful; i--; bufdata += sizeof(double))
                 *(ptr++) = ((0x7ff00000 & *(unsigned int *)(bufdata+4))
 			== 0x7ff00000)?
@@ -340,6 +506,7 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
               }
             else
               {
+#pragma ivdep
               for (i=spoonful; i--; bufdata += sizeof(double))
                 *(ptr++) = ((0x7ff00000 & *(unsigned int *)bufdata)
 			== 0x7ff00000)?
@@ -463,7 +630,7 @@ INPUT	A pointer to the tab structure,
 OUTPUT	-.
 NOTES	.
 AUTHOR	E. Bertin (IAP)
-VERSION	11/10/2007
+VERSION	28/03/2013
  ***/
 void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
   {
@@ -492,6 +659,7 @@ void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
         switch(tab->bitpix)
           {
           case BP_BYTE:
+#pragma ivdep
             for (i=spoonful; i--;)
               *(ptr++) = (FLAGTYPE)*((unsigned char *)bufdata++);
             break;
@@ -499,6 +667,7 @@ void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
           case BP_SHORT:
             if (bswapflag)
               swapbytes(bufdata, 2, spoonful);
+#pragma ivdep
             for (i=spoonful; i--; bufdata += sizeof(unsigned short))
               *(ptr++) = (FLAGTYPE)*((unsigned short *)bufdata);
             break;
@@ -506,13 +675,23 @@ void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
           case BP_LONG:
             if (bswapflag)
               swapbytes(bufdata, 4, spoonful);
-            for (i=spoonful; i--; bufdata += sizeof(unsigned long))
-              *(ptr++) = (FLAGTYPE)*((unsigned long *)bufdata);
+#pragma ivdep
+            for (i=spoonful; i--; bufdata += sizeof(unsigned int))
+              *(ptr++) = (FLAGTYPE)*((unsigned int *)bufdata);
             break;
 
+#ifdef HAVE_LONG_LONG_INT
+          case BP_LONGLONG:
+            if (bswapflag)
+              swapbytes(bufdata, 8, spoonful);
+#pragma ivdep
+            for (i=spoonful; i--; bufdata += sizeof(ULONGLONG))
+              *(ptr++) = (FLAGTYPE)*((ULONGLONG *)bufdata);
+            break;
+#endif
           case BP_FLOAT:
           case BP_DOUBLE:
-            error(EXIT_FAILURE,"*Error*: I was expecting integers in ",
+            error(EXIT_FAILURE,"*Error*: expected integers, not floats, in ",
 				cat->filename);
             break;
           default:
@@ -631,7 +810,7 @@ INPUT	A pointer to the tab structure,
 OUTPUT	-.
 NOTES	.
 AUTHOR	E. Bertin (IAP)
-VERSION	11/10/2007
+VERSION	28/03/2013
  ***/
 void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
   {
@@ -666,12 +845,14 @@ void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
             if (tab->bitsgn)
               {
                char	*bufdata = (char *)cbufdata0;
+#pragma ivdep
               for (i=spoonful; i--;)
                 *(bufdata++) = (char)((*(ptr++)-bz)/bs+0.49999);
               }
             else
               {
                unsigned char	*bufdata = (unsigned char *)cbufdata0;
+#pragma ivdep
               for (i=spoonful; i--;)
                 *(bufdata++) = (unsigned char)((*(ptr++)-bz)/bs+0.49999);;
               }
@@ -681,12 +862,14 @@ void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
             if (tab->bitsgn)
               {
                short	*bufdata = (short *)cbufdata0;
+#pragma ivdep
               for (i=spoonful; i--;)
                 *(bufdata++) = (short)((*(ptr++)-bz)/bs+0.49999);
               }
             else
               {
                unsigned short	*bufdata = (unsigned short *)cbufdata0;
+#pragma ivdep
               for (i=spoonful; i--;)
                 *(bufdata++) = (unsigned short)((*(ptr++)-bz)/bs+0.49999);
               }
@@ -698,12 +881,14 @@ void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
            if (tab->bitsgn)
               {
                int	*bufdata = (int *)cbufdata0;
+#pragma ivdep
               for (i=spoonful; i--;)
                 *(bufdata++) = (int)((*(ptr++)-bz)/bs+0.49999);
               }
             else
               {
                unsigned int	*bufdata = (unsigned int *)cbufdata0;
+#pragma ivdep
               for (i=spoonful; i--;)
                 *(bufdata++) = (unsigned int)((*(ptr++)-bz)/bs+0.49999);
               }
@@ -711,9 +896,30 @@ void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
               swapbytes(cbufdata0, 4, spoonful);
             break;
 
+#ifdef HAVE_LONG_LONG_INT
+          case BP_LONGLONG:
+           if (tab->bitsgn)
+              {
+               SLONGLONG	*bufdata = (SLONGLONG *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (SLONGLONG)((*(ptr++)-bz)/bs+0.49999);
+              }
+            else
+              {
+               ULONGLONG	*bufdata = (ULONGLONG *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (ULONGLONG)((*(ptr++)-bz)/bs+0.49999);
+              }
+            if (bswapflag)
+              swapbytes(cbufdata0, 8, spoonful);
+            break;
+#endif
           case BP_FLOAT:
             {
              float	*bufdata = (float *)cbufdata0;
+#pragma ivdep
             for (i=spoonful; i--;)
               *(bufdata++) = (*(ptr++)-bz)/bs;
             if (bswapflag)
@@ -724,8 +930,171 @@ void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
           case BP_DOUBLE:
             {
              double	*bufdata = (double *)cbufdata0;
+#pragma ivdep
             for (i=spoonful; i--;)
               *(bufdata++) = (double)(*(ptr++)-bz)/bs;
+            if (bswapflag)
+              swapbytes(cbufdata0, 8, spoonful);
+            }
+            break;
+
+          default:
+            error(EXIT_FAILURE,"*FATAL ERROR*: unknown BITPIX type in ",
+                                "read_body()");
+            break;
+          }
+        QFWRITE(cbufdata0, spoonful*tab->bytepix, cat->file, cat->filename);
+        }
+      break;
+
+/*-- Compressed image */
+    case COMPRESS_BASEBYTE:
+      break;
+
+    case COMPRESS_PREVPIX:
+      break;
+
+    default:
+      error(EXIT_FAILURE,"*Internal Error*: unknown compression mode in ",
+                                "read_body()");
+    }
+
+  return;
+  }
+
+
+/******* write_ibody ***********************************************************
+PROTO	write_ibody(tabstruct *tab, FLAGTYPE *ptr, long size)
+PURPOSE	Write integer values to a FITS body.
+INPUT	A pointer to the tab structure,
+	a pointer to the array in memory,
+	the number of elements to be written.
+OUTPUT	-.
+NOTES	.
+AUTHOR	E. Bertin (IAP)
+VERSION	28/03/2013
+ ***/
+void	write_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
+  {
+   static FLAGTYPE	bufdata0[DATA_BUFSIZE/sizeof(FLAGTYPE)];
+   catstruct		*cat;
+   char			*cbufdata0;
+   size_t		i, bowl, spoonful;
+   double		bs,bz;
+
+  bs = tab->bscale;
+  bz = tab->bzero;
+  cat = tab->cat;
+  if (!cat)
+    error(EXIT_FAILURE, "*Internal Error*: no parent cat structure for table ",
+		tab->extname);
+
+  cbufdata0 = (char *)bufdata0;	/* A trick to remove gcc aliasing warnings */
+ 
+  switch(tab->compress_type)
+    {
+/*-- Uncompressed image */
+    case COMPRESS_NONE:
+      bowl = DATA_BUFSIZE/tab->bytepix;
+      spoonful = size<bowl?size:bowl;
+      for(; size>0; size -= spoonful)
+        {
+        if (spoonful>size)
+          spoonful = size;
+        switch(tab->bitpix)
+          {
+          case BP_BYTE:
+            if (tab->bitsgn)
+              {
+               char	*bufdata = (char *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (char)*(ptr++);
+              }
+            else
+              {
+               unsigned char	*bufdata = (unsigned char *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (unsigned char)*(ptr++);
+              }
+            break;
+
+          case BP_SHORT:
+            if (tab->bitsgn)
+              {
+               short	*bufdata = (short *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (short)*(ptr++);
+              }
+            else
+              {
+               unsigned short	*bufdata = (unsigned short *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (unsigned short)*(ptr++);
+              }
+            if (bswapflag)
+              swapbytes(cbufdata0, 2, spoonful);
+            break;
+
+          case BP_LONG:
+           if (tab->bitsgn)
+              {
+               int	*bufdata = (int *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (int)*(ptr++);
+              }
+            else
+              {
+               unsigned int	*bufdata = (unsigned int *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (unsigned int)*(ptr++);
+              }
+            if (bswapflag)
+              swapbytes(cbufdata0, 4, spoonful);
+            break;
+
+#ifdef HAVE_LONG_LONG_INT
+          case BP_LONGLONG:
+           if (tab->bitsgn)
+              {
+               SLONGLONG	*bufdata = (SLONGLONG *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (SLONGLONG)*(ptr++);
+              }
+            else
+              {
+               ULONGLONG	*bufdata = (ULONGLONG *)cbufdata0;
+#pragma ivdep
+              for (i=spoonful; i--;)
+                *(bufdata++) = (ULONGLONG)*(ptr++);
+              }
+            if (bswapflag)
+              swapbytes(cbufdata0, 8, spoonful);
+            break;
+#endif
+          case BP_FLOAT:
+            {
+             float	*bufdata = (float *)cbufdata0;
+#pragma ivdep
+            for (i=spoonful; i--;)
+              *(bufdata++) = (float)((double)*(ptr++)-bz)/bs;
+            if (bswapflag)
+              swapbytes(cbufdata0, 4, spoonful);
+            }
+            break;
+
+          case BP_DOUBLE:
+            {
+             double	*bufdata = (double *)cbufdata0;
+#pragma ivdep
+            for (i=spoonful; i--;)
+              *(bufdata++) = ((double)*(ptr++)-bz)/bs;
             if (bswapflag)
               swapbytes(cbufdata0, 8, spoonful);
             }

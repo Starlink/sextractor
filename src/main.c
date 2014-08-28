@@ -1,18 +1,30 @@
- /*
- 				main.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				main.c
 *
-*	Part of:	SExtractor
+* Command line parsing.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Command-line parsing.
+*	This file part of:	SExtractor
 *
-*	Last modify:	07/07/2006
+*	Copyright:		(C) 1993-2013 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		04/06/2013
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -26,26 +38,34 @@
 #include	"define.h"
 #include	"globals.h"
 #include	"prefs.h"
-
+#include "pattern.h"
 #define		SYNTAX \
 EXECUTABLE " <image> [<image2>][-c <configuration_file>][-<keyword> <value>]\n" \
-"> to dump a default configuration file: " EXECUTABLE " -d \n" \
-"> to dump a default extended configuration file: " EXECUTABLE " -dd \n"
+"> to dump a default configuration file:          " EXECUTABLE " -d \n" \
+"> to dump a default extended configuration file: " EXECUTABLE " -dd \n" \
+"> to dump a full list of measurement parameters: " EXECUTABLE " -dp \n"
 
 extern const char       notokstr[];
+extern keystruct	objkey[];
 
 /********************************** main ************************************/
 int	main(int argc, char *argv[])
 
   {
+   double	tdiff, lines, dets;
    int		a, narg, nim, opt, opt2;
-   char		**argkey, **argval, *str;
+   char		str[MAXCHARL],
+		**argkey, **argval,
+		*pstr;
 
-  if (argc<2)
+setlinebuf(stdout);
+ if (argc<2)
     {
     fprintf(OUTPUT, "\n         %s  version %s (%s)\n", BANNER,MYVERSION,DATE);
-    fprintf(OUTPUT, "\nby %s\n", COPYRIGHT);
-    fprintf(OUTPUT, "visit %s\n", WEBSITE);
+    fprintf(OUTPUT, "\nWritten by %s\n", AUTHORS);
+    fprintf(OUTPUT, "Copyright %s\n", COPYRIGHT);
+    fprintf(OUTPUT, "\nvisit %s\n", WEBSITE);
+    fprintf(OUTPUT, "\n%s\n", DISCLAIMER);
     error(EXIT_SUCCESS, "SYNTAX: ", SYNTAX);
     }
   QMALLOC(argkey, char *, argc);
@@ -59,10 +79,6 @@ int	main(int argc, char *argv[])
   prefs.image_name[0] = "image";
   strcpy(prefs.prefs_name, "default.sex");
   narg = nim = 0;
-
-/* PWD: FITS extension numbers, not set by default */
-  prefs.extnum[0] = -1;
-  prefs.extnum[1] = -1;
 
   for (a=1; a<argc; a++)
     {
@@ -84,7 +100,12 @@ int	main(int argc, char *argv[])
               strcpy(prefs.prefs_name, argv[++a]);
             break;
           case 'd':
-            dumpprefs(opt2=='d' ? 1 : 0);
+            if (opt2=='d')
+              dumpprefs(1);
+            else if (opt2=='p')
+              dumpparams();
+            else
+              dumpprefs(0);
             exit(EXIT_SUCCESS);
             break;
           case 'v':
@@ -107,43 +128,35 @@ int	main(int argc, char *argv[])
       {
 /*---- The input image filename(s) */
       for(; (a<argc) && (*argv[a]!='-'); a++)
-        for (str=NULL;(str=strtok(str?NULL:argv[a], notokstr)); nim++)
-          if (nim<MAXIMAGE) 
-            {
-            char *base = NULL;
-            int extension = 0;
-            /* PWD: Allow the FITS extension number to be appended to the file
-             * names. */ 
-            base = strdup( str );
-            if ( sscanf( str,"%[^[][%d]", base, &extension ) == 2 ) 
-              {
-              fprintf( stderr,"base: %s, extension: %d\n", base, extension );
-              prefs.image_name[nim] = base;
-              prefs.extnum[nim] = extension;
-              }
-            else 
-              {
-              prefs.image_name[nim] = str;
-              free( base );
-              }
-            }
+        {
+        strncpy(str, argv[a], MAXCHARL-1);
+        for (pstr=NULL;(pstr=strtok(pstr?NULL:str, notokstr)); nim++)
+          if (nim<MAXIMAGE)
+            prefs.image_name[nim] = pstr;
           else
-            error(EXIT_FAILURE, "*Error*: Too many input images: ", str);
-
+            error(EXIT_FAILURE, "*Error*: Too many input images: ", pstr);
+        }
       prefs.nimage_name = nim;
       a--;
       }
     }
 
   readprefs(prefs.prefs_name, argkey, argval, narg);
+  preprefs();
 
   free(argkey);
   free(argval);
 
   makeit();
 
+  endprefs();
   NFPRINTF(OUTPUT, "");
-  NPRINTF(OUTPUT, "> All done (in %.0f s)\n", prefs.time_diff);
+  tdiff = prefs.time_diff>0.0? prefs.time_diff : 0.001;
+  lines = (double)thefield1.height/tdiff;
+  dets = (double)thecat.ntotal/tdiff;
+  NPRINTF(OUTPUT,
+	"> All done (in %.1f s: %.1f line%s/s , %.1f detection%s/s)\n",
+	prefs.time_diff, lines, lines>1.0? "s":"", dets, dets>1.0? "s":"");
 
   return EXIT_SUCCESS;
   }

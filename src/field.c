@@ -1,18 +1,30 @@
- /*
- 				field.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				field.c
 *
-*	Part of:	SExtractor
+* Handle field (image) structures.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Handling of field structures.
+*	This file part of:	SExtractor
 *
-*	Last modify:	29/06/2006
+*	Copyright:		(C) 1993-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		12/07/2012
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -32,53 +44,53 @@
 #include	"back.h"
 #include	"field.h"
 #include	"filter.h"
+#include	"fitswcs.h"
+#include	"header.h"
 #include	"interpolate.h"
 
 /********************************* newfield **********************************/
 /*
-Returns a pointer to a new field, ready to go!
+Returns a pointer to a new field for extension ext, ready to go!
 */
-picstruct	*newfield(char *filename, int flags, int nok)
+picstruct	*newfield(char *filename, int flags, int ext)
 
   {
    picstruct	*field;
    catstruct	*cat;
    tabstruct	*tab;
-   OFF_T	mefpos = 0;		/* To avoid gcc -Wall warnings */
-    int		nok2, ntab, margin;
+   char		*pstr;
+   int		ext2, nok, ntab, margin;
    int          skip;
 
-/* Move to nok'th valid FITS image extension */
   if (!(cat = read_cat(filename)))
     error(EXIT_FAILURE, "*Error*: cannot open ", filename);
-  close_cat(cat);
-  tab = cat->tab;
-  nok++;	/* At least one pass through the loop */
-  nok2 = nok;
-
-  /* PWD: when extension is numbered don't skip */
-  skip = ( prefs.extnum[0] == -1 );
-  if ( ! skip ) {
-    nok2 = nok - 1;
-  }
-
-  for (ntab=cat->ntab; nok && ntab--; tab=tab->nexttab)
-    {
-    if (skip && 
-        ( (tab->naxis < 2)
-          || !strncmp(tab->xtension, "BINTABLE", 8)
-          || !strncmp(tab->xtension, "ASCTABLE", 8)) )
-      continue;
-    mefpos = tab->headpos;
-    nok--;
-    }
-  if (ntab<0)
-    error(EXIT_FAILURE, "Not enough valid FITS image extensions in ",filename);
 
 /* First allocate memory for the new field (and nullify pointers) */
   QCALLOC(field, picstruct, 1);
-  field->mefpos = mefpos;
   field->flags = flags;
+  field->cat = cat;
+  nok = 0;
+  tab = cat->tab;
+  if (tab->naxis >= 2
+        && strncmp(tab->xtension, "BINTABLE", 8)
+        && strncmp(tab->xtension, "ASCTABLE", 8))
+    nok++;
+  ext2 = ext;
+  for (ntab=cat->ntab; ext2-- && ntab--;)
+    {
+    tab=tab->nexttab;
+    if (tab->naxis >= 2
+        && strncmp(tab->xtension, "BINTABLE", 8)
+        && strncmp(tab->xtension, "ASCTABLE", 8))
+      nok++;
+    }
+  if (!nok)
+    error(EXIT_FAILURE, "Not a valid FITS image in ",filename);
+
+  field->tab = tab;
+  if (ntab<0)
+    error(EXIT_FAILURE, "Not enough valid FITS image extensions in ",filename);
+
   strcpy (field->filename, filename);
 /* A short, "relative" version of the filename */
   if (!(field->rfilename = strrchr(field->filename, '/')))
@@ -86,34 +98,54 @@ picstruct	*newfield(char *filename, int flags, int nok)
   else
     field->rfilename++;
 
+/* Create a file name with a "header" extension */
+  strcpy(field->hfilename, filename);
+  if (!(pstr = strrchr(field->hfilename, '.')))
+    pstr = field->hfilename+strlen(field->hfilename);
+  sprintf(pstr, "%s", prefs.head_suffix);
+
   sprintf(gstr, "Looking for %s", field->rfilename);
   NFPRINTF(OUTPUT, gstr);
 /* Check the image exists and read important info (image size, etc...) */
+  field->file = cat->file;
+
+  field->headflag = !read_aschead(field->hfilename, nok, field->tab);
   readimagehead(field);
+
   if (cat->ntab>1)
-    sprintf(gstr, "[%d/%d]", nok2, cat->ntab-1);
-  QPRINTF(OUTPUT, "%s \"%.20s\" %s / %d x %d / %d bits %s data\n",
+    sprintf(gstr, " [%d/%d]", ext, cat->tab->naxis<2? cat->ntab-1 : cat->ntab);
+  QPRINTF(OUTPUT, "----- %s %s%s\n",
 	flags&FLAG_FIELD?   "Flagging  from:" :
        (flags&(RMS_FIELD|VAR_FIELD|WEIGHT_FIELD)?
 			     "Weighting from:" :
        (flags&MEASURE_FIELD? "Measuring from:" :
 			     "Detecting from:")),
+	field->rfilename,
+        cat->ntab>1? gstr : "");
+  QPRINTF(OUTPUT, "      \"%.20s\" / %s / %dx%d / %d bits %s\n",
 	field->ident,
-        cat->ntab>1? gstr : "",
+	field->headflag? "EXT. HEADER" : "no ext. header",
 	field->width, field->height, field->bytepix*8,
 	field->bitpix>0?
-		(field->compress_type!=ICOMPRESS_NONE?"COMPRESSED":"INTEGER")
-		:"FLOATING POINT");
-
-/* Provide a buffer for compressed data */
-  if (field->compress_type != ICOMPRESS_NONE)
-    QMALLOC(field->compress_buf, char, FBSIZE);
+	(field->tab->compress_type!=COMPRESS_NONE?"(compressed)":"(integers)")
+	:"(floats)");
 
 /* Check the astrometric system and do the setup of the astrometric stuff */
   if (prefs.world_flag && (flags & (MEASURE_FIELD|DETECT_FIELD)))
     initastrom(field);
   else
     field->pixscale=prefs.pixel_scale;
+
+/* Gain and Saturation */
+  if (flags & (DETECT_FIELD|MEASURE_FIELD))
+    {
+    if (fitsread(field->tab->headbuf, prefs.gain_key, &field->gain,
+	H_FLOAT, T_DOUBLE) != RETURN_OK)
+      field->gain = prefs.gain;
+    if (fitsread(field->tab->headbuf, prefs.satur_key, &field->satur_level,
+	H_FLOAT, T_DOUBLE) !=RETURN_OK)
+      field->satur_level = prefs.satur_level;
+    }
 
 /* Background */
   if (flags & (DETECT_FIELD|MEASURE_FIELD|WEIGHT_FIELD|VAR_FIELD|RMS_FIELD))
@@ -152,15 +184,12 @@ picstruct	*newfield(char *filename, int flags, int nok)
   if (prefs.filter_flag)
     {
 /*-- If filtering is on, one should consider the height of the conv. mask */
-     int	margin;
-
+/*-- + 1 line for detectinhg zero-weight neighbours */
     if (field->stripheight < thefilter->convh)
       field->stripheight = thefilter->convh;
-    if (field->stripmargin < (margin = (thefilter->convh-1)/2))
+    if (field->stripmargin < (margin = (thefilter->convh-1)/2+1))
       field->stripmargin = margin;
     }
-
-  free_cat(&cat, 1);
 
   return field;
   }
@@ -181,15 +210,13 @@ picstruct	*inheritfield(picstruct *infield, int flags)
 /* Copy what is important and reset the remaining */
   *field = *infield;
   field->flags = flags;
-  copyastrom(infield, field);
-  QMEMCPY(infield->fitshead, field->fitshead, char, infield->fitsheadsize);
+  if (infield->wcs)
+    field->wcs = copy_wcs(infield->wcs);
   field->interp_flag = 0;
   field->assoc = NULL;
   field->strip = NULL;
   field->fstrip = NULL;
   field->reffield = infield;
-  field->compress_buf = NULL;
-  field->compress_type = ICOMPRESS_NONE;
   field->file = NULL;
 
   return field;
@@ -203,15 +230,14 @@ Free and close everything related to a field structure.
 void	endfield(picstruct *field)
 
   {
-  if (field->file)
-    fclose(field->file);
 
-  free(field->fitshead);
+/* Free cat only if associated with an open file */
+  if (field->file)
+    free_cat(&field->cat, 1);
   free(field->strip);
   free(field->fstrip);
-  free(field->compress_buf);
-  if (field->astrom)
-    endastrom(field);
+  if (field->wcs)
+    end_wcs(field->wcs);
   if (field->interp_flag)
     end_interpolate(field);
   endback(field);

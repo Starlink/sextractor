@@ -1,18 +1,30 @@
-  /*
- 				pc.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				pc.c
 *
-*	Part of:	SExtractor
+* Manage principal source image components.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Stuff related to Principal Component Analysis (PCA).
+*	This file part of:	SExtractor
 *
-*	Last modify:	27/11/2003
+*	Copyright:		(C) 1999-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		11/10/2010
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -29,7 +41,7 @@
 #include	"fits/fitscat.h"
 #include	"check.h"
 #include	"image.h"
-#include	"poly.h"
+#include	"wcs/poly.h"
 #include	"psf.h"
 
 static  obj2struct	*obj2 = &outobj2;
@@ -172,7 +184,7 @@ pcstruct	*pc_load(catstruct *cat)
       }
     }
 
-  QMALLOC(pc->maskcurr, double, pc->masksize[0]*pc->masksize[1]*pc->npc);
+  QMALLOC(pc->maskcurr, float, pc->masksize[0]*pc->masksize[1]*pc->npc);
 
 /* But don't touch my arrays!! */
   blank_keys(tab);
@@ -189,14 +201,15 @@ headerror:
 /*
 Fit the PC data to the current data.
 */
-void	pc_fit(psfstruct *psf, double *data, double *weight,
+void	pc_fit(psfstruct *psf, float *data, float *weight,
 		int width, int height,int ix, int iy,
-		double dx, double dy, int npc, float backrms)
+		float dx, float dy, int npc, float backrms)
   {
    pcstruct	*pc;
    checkstruct	*check;
    codestruct	*code;
-   double	*basis,*basis0, *cpix,*cpix0, *pcshift,*wpcshift,
+   double	*basis,*basis0;
+   float	*cpix,*cpix0, *pcshift,*wpcshift,
 		*spix,*wspix, *w, *sumopc,*sumopct, *checkbuf,
 		*sol,*solt, *datat,
 		*mx2t, *my2t, *mxyt,
@@ -218,7 +231,7 @@ void	pc_fit(psfstruct *psf, double *data, double *weight,
   dx *= pixstep;
   dy *= pixstep;
 
-  memset(pc->maskcurr, 0, npix*npc*sizeof(double));
+  memset(pc->maskcurr, 0, npix*npc*sizeof(float));
   basis0 = psf->poly->basis;
   cpix0 = pc->maskcurr;
   ppix = pc->maskcomp;
@@ -232,14 +245,14 @@ void	pc_fit(psfstruct *psf, double *data, double *weight,
       cpix = cpix0;
       val = *(basis++);
       for (p=npix; p--;)
-        *(cpix++) += val*(double)*(ppix++);
+        *(cpix++) += val**(ppix++);
       }
     }
 
 /* Allocate memory for temporary buffers */
-  QMALLOC(pcshift, double, npix2*npc);
-  QMALLOC(wpcshift, double, npix2*npc);
-  QMALLOC(sol, double, npc);
+  QMALLOC(pcshift, float, npix2*npc);
+  QMALLOC(wpcshift, float, npix2*npc);
+  QMALLOC(sol, float, npc);
 
 /* Now shift and scale to the right position, and weight the PCs */
   cpix = pc->maskcurr;
@@ -446,7 +459,7 @@ void	pc_fit(psfstruct *psf, double *data, double *weight,
     {
 /*- Reconstruct the unconvolved profile */
     nopix = pc->omasksize[0]*pc->omasksize[1];
-    QCALLOC(sumopc, double, nopix);
+    QCALLOC(sumopc, float, nopix);
     solt = sol;
     ospix = pc->omaskcomp;
     for (c=npc; c--;)
@@ -454,9 +467,9 @@ void	pc_fit(psfstruct *psf, double *data, double *weight,
       val = *(solt++);
       sumopct = sumopc;
       for (p=nopix; p--;)
-        *(sumopct++) += val*(double)*(ospix++);
+        *(sumopct++) += val**(ospix++);
       }
-    QMALLOC(checkbuf, double, npix2);
+    QMALLOC(checkbuf, float, npix2);
     vignet_resample(sumopc, pc->omasksize[0], pc->omasksize[1],
 		checkbuf, width, height, -dx, -dy, pixstep);
     ppix = checkmask;

@@ -1,18 +1,30 @@
- /*
- 				back.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				back.c
 *
-*	Part of:	SExtractor
+* Functions dealing with the image background.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	functions dealing with background computation.
+*	This file part of:	SExtractor
 *
-*	Last modify:	26/11/2003
+*	Copyright:		(C) 1993-2011 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		23/03/2011
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -36,7 +48,7 @@
 Background maps are established from the images themselves; thus we need to
 make at least one first pass through the data.
 */
-void	makeback(picstruct *field, picstruct *wfield)
+void	makeback(picstruct *field, picstruct *wfield, int wscale_flag)
 
   {
    backstruct	*backmesh,*wbackmesh, *bm,*wbm;
@@ -48,7 +60,7 @@ void	makeback(picstruct *field, picstruct *wfield)
 		w,bw, bh, nx,ny,nb,
 		lflag, nr;
    float	*ratio,*ratiop, *weight, *sigma,
-		sratio;
+		sratio, sigfac;
 
 /* If the weight-map is not an external one, no stats are needed for it */
   if (wfield && wfield->flags&(INTERP_FIELD|BACKRMS_FIELD))
@@ -129,10 +141,10 @@ void	makeback(picstruct *field, picstruct *wfield)
 /*---- The image is small enough so that we can make exhaustive stats */
       if (j == ny-1 && field->npix%bufsize)
         bufsize = field->npix%bufsize;
-      readdata(field, buf, bufsize);
+      read_body(field->tab, buf, bufsize);
       if (wfield)
         {
-        readdata(wfield, wbuf, bufsize);
+        read_body(wfield->tab, wbuf, bufsize);
         weight_to_var(wfield, wbuf, bufsize);
         }
 /*---- Build the histograms */
@@ -185,7 +197,7 @@ void	makeback(picstruct *field, picstruct *wfield)
       buft = buf;
       for (i=nlines; i--; buft += w)
         {
-        readdata(field, buft, w);
+        read_body(field->tab, buft, w);
         if (i)
           QFSEEK(field->file, jumpsize*(OFF_T)field->bytepix, SEEK_CUR,
 		field->filename);
@@ -199,7 +211,7 @@ void	makeback(picstruct *field, picstruct *wfield)
         wbuft = wbuf;
         for (i=nlines; i--; wbuft += w)
           {
-          readdata(wfield, wbuft, w);
+          read_body(wfield->tab, wbuft, w);
           weight_to_var(wfield, wbuft, w);
           if (i)
             QFSEEK(wfield->file, jumpsize*(OFF_T)wfield->bytepix, SEEK_CUR,
@@ -230,10 +242,10 @@ void	makeback(picstruct *field, picstruct *wfield)
         {
         if (bufsize2>size)
           bufsize2 = size;
-        readdata(field, buf, bufsize2);
+        read_body(field->tab, buf, bufsize2);
         if (wfield)
           {
-          readdata(wfield, wbuf, bufsize2);
+          read_body(wfield->tab, wbuf, bufsize2);
           weight_to_var(wfield, wbuf, bufsize2);
           }
         backhisto(backmesh, wbackmesh, buf, wbuf, bufsize2, nx, w, bw,
@@ -296,17 +308,26 @@ void	makeback(picstruct *field, picstruct *wfield)
         *(ratiop++) = sratio;
         nr++;
         }
-    wfield->sigfac = hmedian(ratio, nr);
+    sigfac = fqmedian(ratio, nr);
     for (i=0; i<nr && ratio[i]<=0.0; i++);
     if (i<nr)
-      wfield->sigfac = hmedian(ratio+i, nr-i);
+      sigfac = fqmedian(ratio+i, nr-i);
     else
       {
       warning("Null or negative global weighting factor:","defaulted to 1");
-      wfield->sigfac = 1.0;
+      sigfac = 1.0;
       } 
     free(ratio);
+
+    if (wscale_flag)
+      wfield->sigfac = sigfac;
+    else
+      {
+      wfield->sigfac = 1.0;
+      field->backsig /= sigfac;
+      }
     }
+
 
 /* Compute 2nd derivatives along the y-direction */
   NFPRINTF(OUTPUT, "Computing background d-map");
@@ -380,7 +401,7 @@ void	backstat(backstruct *backmesh, backstruct *wbackmesh,
    double	pix,wpix, sig, mean,wmean, sigma,wsigma, step;
    PIXTYPE	*buft,*wbuft,
 		lcut,wlcut, hcut,whcut;
-   int		m,h,x,y, npix,wnpix, offset, lastbite, ngood;
+   int		m,h,x,y, npix,wnpix, offset, lastbite;
 
   h = bufsize/w;
   bm = backmesh;
@@ -398,7 +419,7 @@ void	backstat(backstruct *backmesh, backstruct *wbackmesh,
     mean = sigma = 0.0;
     buft=buf;
 /*-- We separate the weighted case at this level to avoid penalty in CPU */
-     ngood = 0;
+    npix = 0;
     if (wbackmesh)
       {
       wmean = wsigma = 0.0;
@@ -408,13 +429,13 @@ void	backstat(backstruct *backmesh, backstruct *wbackmesh,
            for (x=bw; x--;)
              {
              pix = *(buft++);
-             if ((wpix = *(wbuft++)) < wthresh)
+          if ((wpix = *(wbuft++)) < wthresh && pix > -BIG)
                {
                wmean += wpix;
                wsigma += wpix*wpix;
                mean += pix;
                sigma += pix*pix;
-               ngood++;
+            npix++;
              }
 	  }
         }
@@ -424,35 +445,31 @@ void	backstat(backstruct *backmesh, backstruct *wbackmesh,
       for (y=h; y--; buft+=offset)
          {
         for (x=bw; x--;)
-           {
-               if ( *buft > -BIG ) {
-                  mean += (pix = *(buft++));
-                  sigma += pix*pix;
-               }
-               else
-               {
+          if ((pix = *(buft++)) > -BIG)
+            {
+            mean += pix;
+            sigma += pix*pix;
+            npix++;
+            }
+/*-- If not enough valid pixels, discard this mesh */
+    if ((float)npix < (float)(bw*h*BACK_MINGOODFRAC))
                   buft++;
                }
            }
          }
       }
-    npix = bw*h;
+      {
+      bm->mean = bm->sigma = -BIG;
+      if (wbackmesh)
+        {
+        wbm->mean = wbm->sigma = -BIG;
+        wbm++;
+        wbuf += bw;
+        }
+      continue;
+      }
     if (wbackmesh)
       {
-/*---- If not enough valid pixels, discard this mesh */
-      if ((float)ngood < (float)(npix*BACK_MINGOODFRAC))
-        {
-        bm->mean = bm->sigma = -BIG;
-        if (wbackmesh)
-          {
-          wbm->mean = wbm->sigma = -BIG;
-          wbm++;
-          wbuf += bw;
-          }
-        continue;
-        }
-      else
-        npix = ngood;
       wmean /= (double)npix;
       wsigma = (sig = wsigma/npix - wmean*wmean)>0.0? sqrt(sig):0.0;
       wlcut = wbm->lcut = (PIXTYPE)(wmean - 2.0*wsigma);
@@ -713,21 +730,18 @@ void	filterback(picstruct *field)
   {
    float	*back,*sigma, *back2,*sigma2, *bmask,*smask, *sigmat,
 		d2,d2min, fthresh, med, val,sval;
-   int		i,j,px,py, np, nx,ny, npxm,npxp, npym,npyp, dpx,dpy, x,y, nmin;
+   int		i,j,px,py, np, nx,ny, npx,npx2, npy,npy2, dpx,dpy, x,y, nmin;
 
   fthresh = prefs.backfthresh;
   nx = field->nbackx;
   ny = field->nbacky;
   np = field->nback;
-  npxm = field->nbackfx/2;
-  npxp = field->nbackfx - npxm;
-  npym = field->nbackfy/2;
-  npyp = field->nbackfy - npym;
-  npym *= nx;
-  npyp *= nx;
+  npx = field->nbackfx/2;
+  npy = field->nbackfy/2;
+  npy *= nx;
 
-  QMALLOC(bmask, float, field->nbackfx*field->nbackfy);
-  QMALLOC(smask, float, field->nbackfx*field->nbackfy);
+  QMALLOC(bmask, float, (2*npx+1)*(2*npy+1));
+  QMALLOC(smask, float, (2*npx+1)*(2*npy+1));
   QMALLOC(back2, float, np);
   QMALLOC(sigma2, float, np);
 
@@ -769,24 +783,34 @@ void	filterback(picstruct *field)
 
 /* Do the actual filtering */
   for (py=0; py<np; py+=nx)
+    {
+    npy2 = np - py - nx;
+    if (npy2>npy)
+      npy2 = npy;
+    if (npy2>py)
+      npy2 = py;
     for (px=0; px<nx; px++)
       {
+      npx2 = nx - px - 1;
+      if (npx2>npx)
+        npx2 = npx;
+      if (npx2>px)
+        npx2 = px;
       i=0;
-      for (dpy = -npym; dpy< npyp; dpy+=nx)
-        for (dpx = -npxm; dpx < npxp; dpx++)
+      for (dpy = -npy2; dpy<=npy2; dpy+=nx)
+        {
+        y = py+dpy;
+        for (dpx = -npx2; dpx <= npx2; dpx++)
           {
-          y = py+dpy;
           x = px+dpx;
-          if (y>=0 && y<np && x>=0 && x<nx)
-            {
-            bmask[i] = back[x+y];
-            smask[i++] = sigma[x+y];
-            }
+          bmask[i] = back[x+y];
+          smask[i++] = sigma[x+y];
           }
-      if (fabs((med=hmedian(bmask, i))-back[px+py])>=fthresh)
+        }
+      if (fabs((med=fqmedian(bmask, i))-back[px+py])>=fthresh)
         {
         back2[px+py] = med;
-        sigma2[px+py] = hmedian(smask, i);
+        sigma2[px+py] = fqmedian(smask, i);
         }
       else
         {
@@ -794,21 +818,22 @@ void	filterback(picstruct *field)
         sigma2[px+py] = sigma[px+py];
         }
       }
+    }
 
   free(bmask);
   free(smask);
   memcpy(back, back2, np*sizeof(float));
-  field->backmean = hmedian(back2, np);
+  field->backmean = fqmedian(back2, np);
   free(back2);
   memcpy(sigma, sigma2, np*sizeof(float));
-  field->backsig = hmedian(sigma2, np);
+  field->backsig = fqmedian(sigma2, np);
 
   if (field->backsig<=0.0)
     {
     sigmat = sigma2+np;
     for (i=np; i-- && *(--sigmat)>0.0;);
     if (i>=0 && i<(np-1))
-      field->backsig = hmedian(sigmat+1, np-1-i);
+      field->backsig = fqmedian(sigmat+1, np-1-i);
     else
       {
       if (field->flags&(DETECT_FIELD|MEASURE_FIELD))

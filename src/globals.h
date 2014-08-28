@@ -1,18 +1,30 @@
- /*
- 				globals.h
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				globals.h
 *
-*	Part of:	SExtractor
+* Global declarations and variables.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	global declarations.
+*	This file part of:	SExtractor
 *
-*	Last modify:	14/07/2006
+*	Copyright:		(C) 1993-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		12/09/2013
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #include	"types.h"
 
@@ -27,13 +39,16 @@ float			ctg[37], stg[37];
 char			gstr[MAXCHAR];
 
 /*------------------------------- functions ---------------------------------*/
-extern void	allocparcelout(void),
+extern void	alloccatparams(void),
+		allocparcelout(void),
 		analyse(picstruct *, picstruct *, int, objliststruct *),
 		blankit(char *, int),
                 endcat(char *error),
                 reendcat(void),
+		changecatparamarrays(char *keyword, int *axisn, int naxis),
                 closecheck(void),
 		copydata(picstruct *, int, int),
+		dumpparams(void),
 		endfield(picstruct *),
 		endobject(picstruct *, picstruct *, picstruct *, picstruct *,
 			int, objliststruct *),
@@ -51,6 +66,8 @@ extern void	allocparcelout(void),
 		neurclose(void),
 		neurresp(double *, double *),
 		preanalyse(int, objliststruct *, int),
+		propagate_covar(double *vi, double *d, double *vo,
+				int ni, int no,	double *temp),
 		readcatparams(char *),
 		readdata(picstruct *, PIXTYPE *, int),
 		readidata(picstruct *, FLAGTYPE *, int),
@@ -68,9 +85,12 @@ extern void	allocparcelout(void),
 		useprefs(void),
 		writecat(int, objliststruct *),
 		write_error(char *msg1, char *msg2),
-		write_vo_fields(FILE *file);
+		write_vo_fields(FILE *file),
+		zerocat(void);
 
-extern float	hmedian(float *, int);
+extern double	counter_seconds(void);
+
+extern float	fqmedian(float *, int);
 
 extern int	addobj(int, objliststruct *, objliststruct *),
 		belong(int, objliststruct *, int, objliststruct *),

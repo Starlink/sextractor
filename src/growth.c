@@ -1,18 +1,30 @@
- /*
- 				growth.c
-
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+*				growth.c
 *
-*	Part of:	SExtractor
+* Manage growth curves.
 *
-*	Author:		E.BERTIN (IAP)
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*	Contents:	Make growth curves.
+*	This file part of:	SExtractor
 *
-*	Last modify:	15/02/2005
+*	Copyright:		(C) 1995-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
+*	License:		GNU General Public License
+*
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*	Last modified:		11/10/2010
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #ifdef HAVE_CONFIG_H
 #include        "config.h"
@@ -103,7 +115,7 @@ void	makeavergrowth(picstruct *field, picstruct *wfield, objstruct *obj)
   pflag = (prefs.detect_type==PHOTO)? 1:0;
   corrflag = (prefs.mask_type==MASK_CORRECT);
   var = backnoise2 = field->backsig*field->backsig;
-  gain = prefs.gain;
+  gain = field->gain;
 
 /* Integration radius */
   rlim = GROWTH_NSIG*obj->a;
@@ -336,6 +348,8 @@ void	makeavergrowth(picstruct *field, picstruct *wfield, objstruct *obj)
 		  	i + (tv - *(growtht-1))/dg
 			: i)
 		: (*growth !=0.0 ?tv/(*growth) : 0.0));
+      if (obj2->flux_radius[j] > rlim)
+        obj2->flux_radius[j] = rlim;
       }
     }
 
@@ -346,10 +360,14 @@ void	makeavergrowth(picstruct *field, picstruct *wfield, objstruct *obj)
     tv = 0.5*obj2->flux_auto;
     growtht = growth-1;
     for (i=0; i<n && *(++growtht)<tv; i++);
-    obj2->hl_radius = step*(i? ((dg=*growtht - *(growtht-1)) != 0.0 ?
+    obj2->hl_radius = fabs(step*(i? ((dg=*growtht - *(growtht-1)) != 0.0 ?
 		  	i + (tv - *(growtht-1))/dg
 			: i)
-		: (*growth !=0.0 ?tv/(*growth) : 0.0));
+		: (*growth !=0.0 ?tv/(*growth) : 0.0)));
+    if (obj2->hl_radius > rlim)
+      obj2->hl_radius = rlim;
+    if (obj2->hl_radius < GROWTH_MINHLRAD)
+      obj2->hl_radius = GROWTH_MINHLRAD;
     }
 
   return;

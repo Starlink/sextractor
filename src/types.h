@@ -1,30 +1,48 @@
- /*
- 				types.h
+/*
+*                               types.h
+*
+* Global type definitions.
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*
+*       This file part of:      SExtractor
+*
+*       Copyright:              (C) 1993-2013 Emmanuel Bertin -- IAP/CNRS/UPMC
+*       Copyright:              (C) 2000-2014 Science and Technology Research Council
+*
+*       License:                GNU General Public License
+*
+*       SExtractor is free software: you can redistribute it and/or modify
+*       it under the terms of the GNU General Public License as published by
+*       the Free Software Foundation, either version 3 of the License, or
+*       (at your option) any later version.
+*       SExtractor is distributed in the hope that it will be useful,
+*       but WITHOUT ANY WARRANTY; without even the implied warranty of
+*       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*       GNU General Public License for more details.
+*       You should have received a copy of the GNU General Public License
+*       along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*
+*       Last modified:          05/07/2013
+*
+*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*
-*	Part of:	SExtractor
-*
-*	Author:		E.BERTIN (IAP)
-*                       P.W.DRAPER (STARLINK, Durham University)
-*
-*	Contents:	global type definitions.
-*
-*	Last modify:	12/01/2006
-*
+/*
 *	History:
 *	                20/03/00 (PWD): Added various members to
 *	                                support userradii function.
 *	                20/02/02 (PWD): Added ndfposx and ndfposy
 *	                                members.
-*
-*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
+
 
 #include <stdio.h>
 
 #ifndef _FITSCAT_H_
 #include "fits/fitscat.h"
+#endif
+#ifndef _FITSWCS_H_
+#include "fitswcs.h"
 #endif
 
 /*-------------------------------- flags ------------------------------------*/
@@ -40,8 +58,8 @@
 
 /*----------------------------- weight flags --------------------------------*/
 
-#define		OBJ_WEIGHTZERO	0x0001
-#define		OBJ_DWEIGHTZERO 0x0002
+#define		OBJ_LOWWEIGHT	0x0001
+#define		OBJ_LOWDWEIGHT	0x0002
 
 /*---------------------------- preanalyse flags -----------------------------*/
 
@@ -63,10 +81,14 @@ typedef  enum {BACK_RELATIVE, BACK_ABSOLUTE}
 typedef  enum {CHECK_NONE, CHECK_IDENTICAL, CHECK_BACKGROUND,
         CHECK_BACKRMS, CHECK_MINIBACKGROUND, CHECK_MINIBACKRMS,
         CHECK_SUBTRACTED, CHECK_FILTERED, CHECK_OBJECTS, CHECK_APERTURES,
-	CHECK_SEGMENTATION, CHECK_ASSOC, CHECK_SUBOBJECTS,
-	CHECK_SUBPSFPROTOS, CHECK_PSFPROTOS,
-	CHECK_SUBPCPROTOS, CHECK_PCPROTOS, CHECK_PCOPROTOS,
-		CHECK_MAPSOM}	checkenum;
+	CHECK_SEGMENTATION, CHECK_MASK, CHECK_SUBMASK, CHECK_ASSOC,
+	CHECK_SUBOBJECTS, CHECK_PSFPROTOS, CHECK_SUBPSFPROTOS,
+	CHECK_PCPROTOS, CHECK_SUBPCPROTOS, CHECK_PCOPROTOS,
+	CHECK_MAPSOM, CHECK_PROFILES, CHECK_SUBPROFILES,
+	CHECK_SPHEROIDS, CHECK_SUBSPHEROIDS, CHECK_DISKS, CHECK_SUBDISKS,
+	CHECK_PATTERNS,CHECK_OTHER,
+	MAXCHECK}
+		checkenum;
 	/* CHECK_IMAGE type */
 
 typedef  enum {WEIGHT_NONE, WEIGHT_FROMBACK, WEIGHT_FROMRMSMAP,
@@ -83,12 +105,12 @@ typedef struct
   int		fdnpix;				/* nb of extracted pix */
   int		dnpix;				/* nb of pix above thresh  */
   int		npix;				/* "" in measured frame */
+  int		nzdwpix;			/* nb of zero-dweights around */
+  int		nzwpix;				/* nb of zero-weights inside */
   float		fdflux;				/* integrated ext. flux */
   float		dflux;				/* integrated det. flux */
   float		flux;				/* integrated mes. flux */
   float		fluxerr;			/* integrated variance */
-  float		flux_prof;			/* PROFILE flux*/
-  float		fluxerr_prof;			/* PROFILE flux variance */
   PIXTYPE	fdpeak;				/* peak intensity (ADU) */
   PIXTYPE	dpeak;				/* peak intensity (ADU) */
   PIXTYPE	peak;				/* peak intensity (ADU) */
@@ -112,7 +134,7 @@ typedef struct
   float		cxx,cyy,cxy;			/* ellipse parameters */
   int		firstpix;			/* ptr to first pixel */
   int		lastpix;			/* ptr to last pixel */
-  float		bkg, dbkg, sigbkg;		/* Background stats (ADU) */
+  float		bkg, dbkg, sigbkg, dsigbkg;	/* Background stats (ADU) */
   float		thresh;				/* measur. threshold (ADU) */
   float		dthresh;		       	/* detect. threshold (ADU) */
   float		mthresh;		       	/* max. threshold (ADU) */
@@ -151,16 +173,16 @@ typedef struct
   float		*fluxerr_aper;			/* APER flux error vector  */
   float		*mag_aper;			/* APER magnitude vector */
   float		*magerr_aper;			/* APER mag error vector */
-  float		flux_prof;			/* PROFILE flux*/
-  float		fluxerr_prof;			/* PROFILE flux error */
-  float		mag_prof;			/* PROFILE magnitude */
-  float		magerr_prof;			/* PROFILE magnitude error */
   float		flux_win;			/* WINdowed flux*/
   float		fluxerr_win;			/* WINdowed flux error */
+  float		snr_win;			/* WINdowed SNR */
   float		mag_win;			/* WINdowed magnitude */
   float		magerr_win;			/* WINdowed magnitude error */
 /* ---- astrometric data */
+  BYTE		area_flagw;			/* World area or SB flag */
   double	posx,posy;			/* "FITS" pos. in pixels */
+  double	jacob[NAXIS*NAXIS];		/* Local deproject. Jacobian */
+  double	pixscale2;			/* Local pixel area */
   double	mamaposx,mamaposy;		/* "MAMA" pos. in pixels */
   float		sposx,sposy;			/* single precision pos. */
   float		ndfposx,ndfposy;		/* PWD: single precision pos. 
@@ -179,7 +201,9 @@ typedef struct
   float		poserr_cxxw, poserr_cyyw,
 		poserr_cxyw;			/* WORLD error ellipse */
   double	mx2w,my2w,mxyw;			/* WORLD var. and covar. */
+  double	peakxf, peakyf;			/* FOCAL of brightest pix */
   double	peakxw, peakyw;			/* WORLD of brightest pix */
+  double	mxf, myf;			/* FOCAL barycenters */
   double	mxw, myw;			/* WORLD barycenters */
   double	alphas, deltas;			/* native alpha, delta */
   float		thetas;				/* native position angle E/N*/
@@ -188,8 +212,10 @@ typedef struct
   double	peakalpha1950, peakdelta1950;	/* B1950 for brightest pix */
   double	alpha2000, delta2000;		/* J2000 alpha, delta */
   float		theta2000;			/* J2000 position angle E/N */
+  double	dtheta2000;			/* North J2000 - native angle*/
   double	alpha1950, delta1950;		/* B1950 alpha, delta */
   float		theta1950;			/* B1950 position angle E/N */
+  double	dtheta1950;			/* North B1950 - native angle*/
   float		aw, bw;				/* WORLD ellipse size */
   float		thetaw;				/* WORLD position angle */
   float		cxxw,cyyw,cxyw;			/* WORLD ellipse parameters */
@@ -202,7 +228,7 @@ typedef struct
   float		polarw;				/* WORLD "polarization" */
   float		sprob;				/* Stellarity index */
   float		fwhmw;				/* WORLD FWHM */
-  float		*assoc;				/* ASSOCiated data */
+  double	*assoc;				/* ASSOCiated data */
   int		assoc_number;			/* nb of ASSOCiated objects */
   float		*vignet;			/* Pixel data */
   float		*vigshift;			/* (Shifted) pixel data */
@@ -236,11 +262,12 @@ typedef struct
   float		win_aw, win_bw,
 		win_thetaw;			/* WORLD ellipse parameters */
   float		win_polarw;			/* WORLD WIN "polarization" */
-  float		win_thetas;		/* native error pos. angle */
-  float		win_theta2000;		/* J2000 error pos. angle */
-  float		win_theta1950;		/* B1950 error pos. angle */
+  float		win_thetas;			/* native error pos. angle */
+  float		win_theta2000;			/* J2000 error pos. angle */
+  float		win_theta1950;			/* B1950 error pos. angle */
   float		win_cxxw, win_cyyw,
 		win_cxyw;			/* WORLD ellipse parameters */
+  double	winpos_xf, winpos_yf;		/* FOCAL coordinates */
   double	winpos_xw, winpos_yw;		/* WORLD coordinates */
   double	winpos_alphas, winpos_deltas;	/* native alpha, delta */
   double	winpos_alpha2000, winpos_delta2000;	/* J2000 alpha, delta */
@@ -263,11 +290,14 @@ typedef struct
   float		*flux_radius;			/* f-light-radii */
   float		hl_radius;			/* Scalar half-light radius */
 /* ---- PSF-fitting */
-  float		*flux_psf;			/* Flux from PSF-fitting */
-  float		*fluxerr_psf;			/* RMS error on PSF flux */
-  float		*mag_psf;			/* Mag from PSF-fitting */
-  float		*magerr_psf;			/* RMS mag from PSF-fitting */
-  float		*x_psf, *y_psf;			/* Coords from PSF-fitting */
+  float		fwhm_psf;			/* PSF FWHM */
+  float		fwhmw_psf;			/* WORLD PSF FWHM */
+  float		flux_psf;			/* Flux from PSF-fitting */
+  float		fluxerr_psf;			/* RMS error on PSF flux */
+  float		mag_psf;			/* Mag from PSF-fitting */
+  float		magerr_psf;			/* RMS mag from PSF-fitting */
+  double	x_psf, y_psf;			/* Coords from PSF-fitting */
+  double	xf_psf, yf_psf;			/* FOCAL coordinates */
   short		niter_psf;			/* # of PSF-fitting iterat. */
   short		npsf;				/* # of fitted PSFs */
   float		chi2_psf;			/* Red. chi2 of PSF-fitting */
@@ -307,8 +337,214 @@ typedef struct
   float		fluxerr_galfit;			/* RMS error on galfit flux */
   float		mag_galfit;			/* Galaxy tot. mag from fit */
   float		magerr_galfit;			/* RMS error on galfit mag */
-/* ---- MEF */
+/* ---- Profile-fitting */
+  float		*prof_vector;			/* Model parameters */
+  float		*prof_errvector;		/* Model parameter errors */
+  float		*prof_errmatrix;		/* Model parameter covariances*/
+  float		prof_chi2;			/* Reduced chi2 */
+  BYTE		prof_flag;			/* Model-fitting flags */
+  BYTE		prof_flagw;			/* Model-fitting WORLD flag */
+  short		prof_niter;			/* # of model-fitting iter. */
+  float		flux_prof;			/* Flux from model-fitting */
+  float		fluxerr_prof;			/* RMS error on model flux */
+  float		mag_prof;			/* Mag from model-fitting */
+  float		magerr_prof;			/* RMS mag from model-fitting */
+  float		peak_prof;			/* Model peak flux */
+  float		fluxeff_prof;			/* Effective model flux */
+  float		fluxmean_prof;			/* Mean effective model flux */
+  float		mumax_prof;			/* Model peak surf. bri. */
+  float		mueff_prof;			/* Model effective surf. bri. */
+  float		mumean_prof;			/* Mean model effective SB */
+  float		fluxcor_prof;			/* Hybrid model-fitting flux */
+  float		fluxcorerr_prof;		/* RMS error on hybrid flux */
+  float		magcor_prof;			/* Hybrid model-fitting mag */
+  float		magcorerr_prof;			/* RMS error on hybrid mag */
+  double	x_prof, y_prof;			/* Coords from model-fitting*/
+  double	xf_prof, yf_prof;		/* FOCAL coordinates */
+  double	xw_prof, yw_prof;		/* WORLD coords */
+  double	alphas_prof, deltas_prof;	/* native alpha, delta */
+  double	alpha2000_prof, delta2000_prof;	/* J2000 alpha, delta */
+  double	alpha1950_prof, delta1950_prof;	/* B1950 alpha, delta */
+  double	poserrmx2_prof, poserrmy2_prof,
+		poserrmxy_prof;			/* Error ellips moments */
+  float		poserra_prof, poserrb_prof,
+		poserrtheta_prof;		/* Error ellips parameters */
+  float		poserrcxx_prof, poserrcyy_prof,
+		poserrcxy_prof;			/* pos. error ellipse */
+  double	poserrmx2w_prof, poserrmy2w_prof,
+		poserrmxyw_prof;		/* WORLD error moments */
+  float		poserraw_prof, poserrbw_prof,
+		poserrthetaw_prof;		/* WORLD error parameters */
+  float		poserrthetas_prof;		/* native error pos. angle */
+  float		poserrtheta2000_prof;		/* J2000 error pos. angle */
+  float		poserrtheta1950_prof;		/* B1950 error pos. angle */
+  float		poserrcxxw_prof, poserrcyyw_prof,
+		poserrcxyw_prof;		/* WORLD error ellipse */
+  double	prof_mx2, prof_my2, prof_mxy;	/* Model-fitting moments */
+  double	prof_mx2cov[9];			/* Mod-fit moment cov. matrix */
+  float		prof_a, prof_b,
+		prof_theta;			/* Model-fitting ellip. params*/
+  float		prof_cxx, prof_cyy,
+		prof_cxy;			/* Model-fitting ellip. params*/
+  double	prof_convmx2, prof_convmy2,
+		prof_convmxy;			/* Convolved model moments */
+  float		prof_convcxx, prof_convcyy,
+		prof_convcxy;			/* Conv. model ellipse params */
+  float		prof_conva, prof_convb,
+		prof_convtheta;			/* Conv. model ellipse params */
+  float		prof_pol1, prof_pol2;		/* Model-fitting pol. vector*/
+  float		prof_pol1err, prof_pol2err,
+		prof_pol12corr;			/* Model-fitting pol. errors */
+  float		prof_e1, prof_e2;		/* Model-fitting ellip.vector*/
+  float		prof_e1err, prof_e2err,
+		prof_e12corr;			/* Model-fitting ellip. errors */
+  double	prof_mx2w, prof_my2w,
+		prof_mxyw;			/* WORLD model-fitting moments*/
+  float		prof_aw, prof_bw,
+		prof_thetaw;			/* WORLD ellipse parameters */
+  float		prof_thetas;			/* native error pos. angle */
+  float		prof_theta2000;			/* J2000 error pos. angle */
+  float		prof_theta1950;			/* B1950 error pos. angle */
+  float		prof_cxxw, prof_cyyw,
+		prof_cxyw;			/* WORLD ellipse parameters */
+  float		prof_pol1w, prof_pol2w;		/* WORLD polarisation vector*/
+  float		prof_pol1errw, prof_pol2errw,
+		prof_pol12corrw;		/* WORLD polarisation errors */
+  float		prof_e1w, prof_e2w;		/* WORLD ellipticity vector*/
+  float		prof_e1errw, prof_e2errw,
+		prof_e12corrw;			/* WORLD ellipticity errors */
+  float		prof_class_star;		/* Mod.-fitting star/gal class*/
+  float		prof_concentration;		/* Model-fitting concentration*/
+  float		prof_concentrationerr;		/* RMS error */
+  float		prof_noisearea;			/* Equivalent noise area */
+  float		prof_offset_flux;		/* Background offset */
+  float		prof_offset_fluxerr;		/* RMS error */
+  float		prof_dirac_flux;		/* Point source total flux */
+  float		prof_dirac_fluxerr;		/* RMS error */
+  float		prof_dirac_fluxratio;		/* Point source flux ratio */
+  float		prof_dirac_fluxratioerr;	/* RMS error */
+  float		prof_dirac_mag;			/* Point source "total" mag */
+  float		prof_dirac_magerr;		/* RMS error */
+  float		prof_spheroid_flux;		/* Spheroid total flux */
+  float		prof_spheroid_fluxerr;		/* RMS error */
+  float		prof_spheroid_peak;		/* Spheroid peak flux */
+  float		prof_spheroid_fluxeff;		/* Spheroid effective flux */
+  float		prof_spheroid_fluxmean;		/* Spheroid mean effect. flux */
+  float		prof_spheroid_mag;		/* Spheroid "total" mag */
+  float		prof_spheroid_magerr;		/* RMS error */
+  float		prof_spheroid_mumax;		/* Spehroid peak surf. brigh.*/
+  float		prof_spheroid_mueff;		/* Spheroid effect. surf. bri.*/
+  float		prof_spheroid_mumean;		/* Spheroid mean eff. su. bri.*/
+  float		prof_spheroid_fluxratio;	/* Spheroid flux ratio */
+  float		prof_spheroid_fluxratioerr;	/* RMS error */
+  float		prof_spheroid_reff;		/* Spheroid effective radius */
+  float		prof_spheroid_refferr;		/* RMS error */
+  float		prof_spheroid_reffw;		/* WORLD spheroid eff. radius */
+  float		prof_spheroid_refferrw;		/* RMS error */
+  float		prof_spheroid_aspect;		/* Spheroid aspect ratio */
+  float		prof_spheroid_aspecterr;	/* RMS error */
+  float		prof_spheroid_aspectw;		/* WORLD spheroid aspect ratio*/
+  float		prof_spheroid_aspecterrw;	/* RMS error */
+  float		prof_spheroid_theta;		/* Spheroid position angle */
+  float		prof_spheroid_thetaerr;		/* RMS error */
+  float		prof_spheroid_thetaw;		/* WORLD spheroid pos. angle */
+  float		prof_spheroid_thetaerrw;	/* RMS error */
+  float		prof_spheroid_thetas;		/* Sky spheroid pos. angle */
+  float		prof_spheroid_theta2000;	/* J2000 spheroid pos. angle */
+  float		prof_spheroid_theta1950;	/* B1950 spheroid pos. angle */
+  float		prof_spheroid_sersicn;		/* Spheroid Sersic index */
+  float		prof_spheroid_sersicnerr;	/* RMS error */
+  float		prof_disk_flux;			/* Disk total flux */
+  float		prof_disk_fluxerr;		/* RMS error */
+  float		prof_disk_peak;			/* Disk peak flux */
+  float		prof_disk_fluxeff;		/* Disk effective flux */
+  float		prof_disk_fluxmean;		/* Disk mean effective flux */
+  float		prof_disk_mag;			/* Disk "total" mag */
+  float		prof_disk_magerr;		/* RMS error */
+  float		prof_disk_mumax;		/* Disk peak surf. brightness */
+  float		prof_disk_mueff;		/* Disk effective surf. bri. */
+  float		prof_disk_mumean;		/* Disk mean eff. surf. bri. */
+  float		prof_disk_fluxratio;		/* Disk flux ratio */
+  float		prof_disk_fluxratioerr;		/* RMS error */
+  float		prof_disk_scale;		/* Disk scale length */
+  float		prof_disk_scaleerr;		/* RMS error */
+  float		prof_disk_scalew;		/* WORLD disk scale length */
+  float		prof_disk_scaleerrw;		/* RMS error */
+  float		prof_disk_aspect;		/* Disk aspect ratio */
+  float		prof_disk_aspecterr;		/* RMS error */
+  float		prof_disk_aspectw;		/* WORLD disk aspect ratio */
+  float		prof_disk_aspecterrw;		/* RMS error */
+  float		prof_disk_inclination;		/* Disk inclination */
+  float		prof_disk_inclinationerr;	/* RMS error */
+  float		prof_disk_theta;		/* Disk position angle */
+  float		prof_disk_thetaerr;		/* RMS error */
+  float		prof_disk_thetaw;		/* WORLD disk position angle */
+  float		prof_disk_thetaerrw;		/* RMS error */
+  float		prof_disk_thetas;		/* Sky disk position angle */
+  float		prof_disk_theta2000;		/* J2000 disk position angle */
+  float		prof_disk_theta1950;		/* B1950 disk position angle */
+  float		*prof_disk_patternvector;	/* Disk pattern coefficients */
+  float		*prof_disk_patternmodvector;	/* Disk pattern moduli */
+  float		*prof_disk_patternargvector;	/* Disk pattern arguments */
+  float		prof_disk_patternspiral;	/* Disk pattern spiral index */
+  float		prof_bar_flux;			/* Galactic bar total flux */
+  float		prof_bar_fluxerr;		/* RMS error */
+  float		prof_bar_mag;			/* Bar "total" magnitude */
+  float		prof_bar_magerr;		/* RMS error */
+  float		prof_bar_fluxratio;		/* Bar flux ratio */
+  float		prof_bar_fluxratioerr;		/* RMS error */
+  float		prof_bar_length;		/* Bar length */
+  float		prof_bar_lengtherr;		/* RMS error */
+  float		prof_bar_lengthw;		/* WORLD bar length */
+  float		prof_bar_lengtherrw;		/* RMS error */
+  float		prof_bar_aspect;		/* Bar aspect ratio */
+  float		prof_bar_aspecterr;		/* RMS error */
+  float		prof_bar_aspectw;		/* WORLD bar aspect ratio */
+  float		prof_bar_aspecterrw;		/* RMS error */
+  float		prof_bar_posang;		/* Bar true prosition angle */
+  float		prof_bar_posangerr;		/* RMS error */
+  float		prof_bar_theta;			/* Bar projected angle */
+  float		prof_bar_thetaerr;		/* RMS error */
+  float		prof_bar_thetaw;		/* WORLD bar projected angle */
+  float		prof_bar_thetaerrw;		/* RMS error */
+  float		prof_bar_thetas;		/* Sky bar projected angle */
+  float		prof_bar_theta2000;		/* J2000 bar projected angle */
+  float		prof_bar_theta1950;		/* B1950 bar projected angle */
+  float		prof_arms_flux;			/* Spiral arms total flux */
+  float		prof_arms_fluxerr;		/* RMS error */
+  float		prof_arms_mag;			/* Arms "total" magnitude */
+  float		prof_arms_magerr;		/* RMS error */
+  float		prof_arms_fluxratio;		/* Arms flux ratio */
+  float		prof_arms_fluxratioerr;		/* RMS error */
+  float		prof_arms_scale;		/* Arms scalelength */
+  float		prof_arms_scaleerr;		/* RMS error */
+  float		prof_arms_scalew;		/* WORLD arms scalelength */
+  float		prof_arms_scaleerrw;		/* RMS error */
+  float		prof_arms_posang;		/* Arms true position angle */
+  float		prof_arms_posangerr;		/* RMS error */
+  float		prof_arms_thetaw;		/* WORLD arms position angle */
+  float		prof_arms_thetas;		/* Sky arms position angle */
+  float		prof_arms_theta2000;		/* J2000 arms position angle */
+  float		prof_arms_theta1950;		/* B1950 arms position angle */
+  float		prof_arms_pitch;		/* Arms pitch angle */
+  float		prof_arms_pitcherr;		/* RMS error */
+  float		prof_arms_start;		/* Arms starting radius */
+  float		prof_arms_starterr;		/* RMS error */
+  float		prof_arms_startw;		/* WORLD arms starting radius */
+  float		prof_arms_starterrw;		/* RMS error */
+  float		prof_arms_quadfrac;		/* Arms quadrature fraction */
+  float		prof_arms_quadfracerr;		/* RMS error */
+  float		dprof_chi2;			/* Det. model fit reduced chi2*/
+  BYTE		dprof_flag;			/* Detection model flags*/
+  short		dprof_niter;			/* # of detection model iter. */
+  float		flux_dprof;			/* Flux in detection model*/
+  float		fluxerr_dprof;			/* Error on detect model flux */
+  float		mag_dprof;			/* Mag from detection model */
+  float		magerr_dprof;			/* RMS mag from detect. model */
+/* ---- MEF ----*/
   short		ext_number;			/* FITS extension number */
+/* ---- Time ---- */
+  float		analtime;			/* Analysis time (s) */
   }	obj2struct;
 
 /*----------------------------- lists of objects ----------------------------*/
@@ -328,11 +564,13 @@ typedef struct pic
   {
   char		filename[MAXCHAR];	/* pointer to the image filename */
   char		*rfilename;		/* pointer to the reduced image name */
+  char		hfilename[MAXCHAR];	/* external header filename */
+  int		headflag;		/* external header found? */
   char		ident[MAXCHAR];		/* field identifier (read from FITS)*/
   char		rident[MAXCHAR];	/* field identifier (relative) */
+  catstruct	*cat;			/* FITS structure */
+  tabstruct	*tab;			/* FITS extension structure */
   FILE		*file;			/* pointer the image file structure */
-  char		*fitshead;		/* pointer to the FITS header */
-  int		fitsheadsize;		/* FITS header size */
 /* ---- main image parameters */
   int		bitpix, bytepix;	/* nb of bits and bytes per pixel */
   int		bitsgn;			/* non-zero if signed integer data */
@@ -354,17 +592,12 @@ typedef struct pic
   int		stripy;			/* y position in buffer */
   int		stripylim;		/* y limit in buffer */
   int		stripysclim;		/* y scroll limit in buffer */
-/* ---- image (de-)compression */
-  enum {ICOMPRESS_NONE, ICOMPRESS_BASEBYTE, ICOMPRESS_PREVPIX}
-		compress_type;		/* image compression type */
-  char		*compress_buf;		/* de-compression buffer */
-  char		*compress_bufptr;	/* present pixel in buffer */
-  int		compress_curval;	/* current pixel or checksum value */
-  int		compress_checkval;	/* foreseen pixel or checksum value */
-  int		compress_npix;		/* remaining pixels in buffer */
 /* ---- basic astrometric parameters */
    double	pixscale;		/* pixel size in arcsec.pix-1 */
    double	epoch;			/* epoch of coordinates */
+/* ---- basic photometric parameters */
+   double	gain;			/* conversion factor in e-/ADU */
+   double	satur_level;		/* saturation level in ADUs */
 /* ---- background parameters */
   float		*back;			/* ptr to the background map in mem */
   float		*dback;			/* ptr to the background deriv. map */
@@ -383,7 +616,7 @@ typedef struct pic
   PIXTYPE	thresh;			/* analysis threshold */
   backenum	back_type;		/* Background type */
 /* ---- astrometric parameters */
-  struct structastrom	*astrom;	/* astrometric data */
+  struct wcs	*wcs;			/* astrometric data */
   struct structassoc	*assoc;		/* ptr to the assoc-list */
   int		flags;			/* flags defining the field type */
 /* ---- image interpolation */

@@ -623,36 +623,6 @@ int	removekeywordfrom_head(tabstruct *tab, char *keyword)
   }
 
 
-/****** removekeywordfrom_head ************************************************
-PROTO	int removekeywordfrom_head(tabstruct *tab, char *keyword)
-PURPOSE	Remove a keyword from a table header.
-INPUT	Table structure,
-	String containing the keyword.
-OUTPUT	RETURN_OK if the keyword was found, RETURN_ERROR otherwise..
-NOTES	The headbuf pointer in the tabstruct might be reallocated.
-        '?' wildcard allowed; Don't remove the ``END'' keyword with this!!!
-AUTHOR	E. Bertin (IAP)
-VERSION	11/06/2007
- ***/
-int	removekeywordfrom_head(tabstruct *tab, char *keyword)
-
-  {
-   int	nb;
-
-  if (fitsremove(tab->headbuf, keyword) == RETURN_OK)
-    {
-    if ((nb=fitsfind(tab->headbuf, "END     ")/(FBSIZE/80)+1) < tab->headnblock)
-      {
-      tab->headnblock = nb;
-      QREALLOC(tab->headbuf, char, tab->headnblock*FBSIZE);
-      }
-    return RETURN_OK;
-    }
-  else
-    return RETURN_ERROR;
-  }
-
-
 /****** tformof ***************************************************************
 PROTO	int tformof(char *str, t_type ttype, int n)
 PURPOSE	Return the ``TFORM'' string corresponding to a t_type

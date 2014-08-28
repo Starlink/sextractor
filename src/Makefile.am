@@ -51,7 +51,8 @@ sex_SOURCES		= analyse.c assoc.c astrom.c back.c bpro.c catout.c \
 			  pattern.h photom.h plist.h prefs.h preflist.h \
 			  profit.h psf.h retina.h sexhead1.h sexhead.h \
 			  sexheadsc.h som.h threads.h types.h wcscelsys.h \
-			  weight.h winpos.h xml.h
+			  weight.h winpos.h xml.h \
+              userradii.c userradii.h
 ldactoasc_SOURCES 	= ldactoasc.c ldactoasc.h
 sex_LDADD		= $(srcdir)/fits/libfits.a \
 			  $(srcdir)/wcs/libwcs_c.a \

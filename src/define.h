@@ -41,7 +41,7 @@
 
 /*------------------------ what, who, when and where ------------------------*/
 
-#define		BANNER		"SExtractor"
+#define		BANNER		"SExtractor (Starlink version)"
 #define		MYVERSION	VERSION
 #define		EXECUTABLE	"sex"
 #define         COPYRIGHT       "2012 IAP/CNRS/UPMC"

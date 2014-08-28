@@ -425,25 +425,21 @@ void	backstat(backstruct *backmesh, backstruct *wbackmesh,
       wmean = wsigma = 0.0;
       wbuft = wbuf;
       for (y=h; y--; buft+=offset,wbuft+=offset)
-         {
-           for (x=bw; x--;)
-             {
-             pix = *(buft++);
+        for (x=bw; x--;)
+          {
+          pix = *(buft++);
           if ((wpix = *(wbuft++)) < wthresh && pix > -BIG)
-               {
-               wmean += wpix;
-               wsigma += wpix*wpix;
-               mean += pix;
-               sigma += pix*pix;
+            {
+            wmean += wpix;
+            wsigma += wpix*wpix;
+            mean += pix;
+            sigma += pix*pix;
             npix++;
-             }
+            }
 	  }
-        }
       }
     else
-      {
       for (y=h; y--; buft+=offset)
-         {
         for (x=bw; x--;)
           if ((pix = *(buft++)) > -BIG)
             {
@@ -453,11 +449,6 @@ void	backstat(backstruct *backmesh, backstruct *wbackmesh,
             }
 /*-- If not enough valid pixels, discard this mesh */
     if ((float)npix < (float)(bw*h*BACK_MINGOODFRAC))
-                  buft++;
-               }
-           }
-         }
-      }
       {
       bm->mean = bm->sigma = -BIG;
       if (wbackmesh)
@@ -475,75 +466,77 @@ void	backstat(backstruct *backmesh, backstruct *wbackmesh,
       wlcut = wbm->lcut = (PIXTYPE)(wmean - 2.0*wsigma);
       whcut = wbm->hcut = (PIXTYPE)(wmean + 2.0*wsigma);
       }
+    if ( mean != 0.0 && sigma != 0.0 ) 
+      {
+      mean /= (double)npix;
+      sigma = (sig = sigma/npix - mean*mean)>0.0? sqrt(sig):0.0;
+      lcut = bm->lcut = (PIXTYPE)(mean - 2.0*sigma);
+      hcut = bm->hcut = (PIXTYPE)(mean + 2.0*sigma);
+      }
+    else
+      {
+      lcut = BIG;
+      hcut = -BIG;
+      }
+    mean = sigma = 0.0;
+    npix = wnpix = 0;
+    buft = buf;
+    if (wbackmesh)
+      {
+      wmean = wsigma = 0.0;
+      wbuft=wbuf;
+      for (y=h; y--; buft+=offset, wbuft+=offset)
+        for (x=bw; x--;)
+          {
+          pix = *(buft++);
+          if ((wpix = *(wbuft++))<wthresh && pix<=hcut && pix>=lcut)
+            {
+            mean += pix;
+            sigma += pix*pix;
+            npix++;
+            if (wpix<=whcut && wpix>=wlcut)
+              {
+              wmean += wpix;
+              wsigma += wpix*wpix;
+              wnpix++;
+              }
+            }
+          }
+      }
+    else
+      for (y=h; y--; buft+=offset)
+        for (x=bw; x--;)
+          {
+          pix = *(buft++);
+          if (pix<=hcut && pix>=lcut)
+            {
+            mean += pix;
+            sigma += pix*pix;
+            npix++;
+            }
+          }
 
-      if ( mean != 0.0 && sigma != 0.0 ) {
-         mean /= (double)npix;
-         sigma = (sig = sigma/npix - mean*mean)>0.0? sqrt(sig):0.0;
-         lcut = bm->lcut = (PIXTYPE)(mean - 2.0*sigma);
-         hcut = bm->hcut = (PIXTYPE)(mean + 2.0*sigma);
-      }
-      else
+    if ( mean != 0.0 && sigma != 0.0 )
       {
-         lcut = BIG;
-         hcut = -BIG;
+      bm->npix = npix;
+      mean /= (double)npix;
+      sig = sigma/npix - mean*mean;
+      sigma = sig>0.0 ? sqrt(sig):0.0;
+      bm->mean = mean;
+      bm->sigma = sigma;
+      if ((bm->nlevels = (int)(step*npix+1)) > QUANTIF_NMAXLEVELS)
+        bm->nlevels = QUANTIF_NMAXLEVELS;
+      bm->qscale = sigma>0.0? 2*QUANTIF_NSIGMA*sigma/bm->nlevels : 1.0;
+      bm->qzero = mean - QUANTIF_NSIGMA*sigma;
       }
-      mean = sigma = 0.0;
-      npix = wnpix = 0;
-      buft = buf;
-      if (wbackmesh)
+    else
       {
-        wmean = wsigma = 0.0;
-        wbuft=wbuf;
-        for (y=h; y--; buft+=offset, wbuft+=offset)
-          for (x=bw; x--;)
-            {
-            pix = *(buft++);
-            if ((wpix = *(wbuft++))<wthresh && pix<=hcut && pix>=lcut)
-              {
-              mean += pix;
-              sigma += pix*pix;
-              npix++;
-              if (wpix<=whcut && wpix>=wlcut)
-                {
-                wmean += wpix;
-                wsigma += wpix*wpix;
-                wnpix++;
-                }
-              }
-            }
-        }
-      else
-        for (y=h; y--; buft+=offset)
-          for (x=bw; x--;)
-            {
-            pix = *(buft++);
-            if (pix<=hcut && pix>=lcut)
-              {
-              mean += pix;
-              sigma += pix*pix;
-              npix++;
-              }
-            }
-  
-      if ( mean != 0.0 && sigma != 0.0 ) {
-        bm->npix = npix;
-        mean /= (double)npix;
-        sig = sigma/npix - mean*mean;
-        sigma = sig>0.0 ? sqrt(sig):0.0;
-        bm->mean = mean;
-        bm->sigma = sigma;
-        if ((bm->nlevels = (int)(step*npix+1)) > QUANTIF_NMAXLEVELS)
-          bm->nlevels = QUANTIF_NMAXLEVELS;
-        bm->qscale = sigma>0.0? 2*QUANTIF_NSIGMA*sigma/bm->nlevels : 1.0;
-        bm->qzero = mean - QUANTIF_NSIGMA*sigma;
-      }
-      else {
-         bm->npix = 0;
-         bm->mean = -BIG;
-         bm->sigma = -BIG;
-         bm->nlevels = 1;
-         bm->qscale = 1.0;
-         bm->qzero = 0.0;
+      bm->npix = 0;
+      bm->mean = -BIG;
+      bm->sigma = -BIG;
+      bm->nlevels = 1;
+      bm->qscale = 1.0;
+      bm->qzero = 0.0;
       }
     if (wbackmesh)
       {
@@ -632,15 +625,16 @@ void	backhisto(backstruct *backmesh, backstruct *wbackmesh,
       for (y=h; y--; buft += offset)
         for (x=bw; x--;)
           {
-              if ( *buft > -BIG ) {
-                  bin = (int)(*(buft++)/qscale + cste);
-                  if (bin>=0 && bin<nlevels)
-                      (*(histo+bin))++;
-              }
-              else
-              {
-                  buft++;
-              }
+          if ( *buft > -BIG ) 
+            {
+            bin = (int)(*(buft++)/qscale + cste);
+            if (bin>=0 && bin<nlevels)
+              (*(histo+bin))++;
+            }
+          else
+            {
+                buft++;
+            }
           }
     }
 

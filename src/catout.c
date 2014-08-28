@@ -686,7 +686,7 @@ void	updateparamflags()
   FLAG(obj.wflag) |= FLAG(obj.nzwpix) | FLAG(obj.nzdwpix);
 
 /* PWD: Average radii are all calculated if one is needed */
-  for ( i = 0; i < NRAD; i++ ) {
+  for ( i = 0; i < NRAD; i++ )
      FLAG(obj.rad[0]) |= FLAG(obj.rad[i]);
 
   return; 

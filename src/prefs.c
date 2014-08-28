@@ -603,8 +603,6 @@ void	useprefs()
     prefs.backsize[1] = prefs.backsize[0];
   if (prefs.nbackfsize<2)
     prefs.backfsize[1] = prefs.backfsize[0];
-    prefs.back_val[1] = prefs.back_val[0]; /* PWD: modification here */
-  }
 
 /*------------------------------ FLAG-images -------------------------------*/
   prefs.nimaisoflag = (prefs.imaflag_size > prefs.imanflag_size) ?

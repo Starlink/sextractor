@@ -417,12 +417,13 @@ wcsstruct	*read_wcs(tabstruct *tab)
         }
 
 /*  PWD: change here. */
-  else if (fitsfind(buf, "PC%d_%d")!=RETURN_ERROR)
+  else if (fitsfind(buf, "PC?_?")!=RETURN_ERROR)
 /*---- ...If new style PC keywords exist, use them for the linear mapping
  * terms... */
     for (l=0; l<naxis; l++)
       for (j=0; j<naxis; j++)
         {
+        printf( "New style PC keywords seen...\n" );
         sprintf(str, "PC%d_%d", l+1, j+1);
         FITSREADF(buf, str, wcs->cd[l*naxis+j], l==j?1.0:0.0)
         wcs->cd[l*naxis+j] *= wcs->cdelt[l];

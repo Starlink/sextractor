@@ -11,3 +11,5 @@ sextractor-tpx.spec
 sextractor.spec
 stamp-h1
 sex.1
+libtool
+src/ldactoasc

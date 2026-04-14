@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				extract.h
 *
@@ -37,7 +38,7 @@ typedef	enum		{COMPLETE, INCOMPLETE, NONOBJECT, OBJECT}
 				status;	/* Extraction status */
 
 /*--------------------------------- variables -------------------------------*/
-PIXTYPE		*dumscan;
+extern PIXTYPE		*dumscan;
 
 /*------------------------------- structures --------------------------------*/
 /* Temporary object parameters during extraction */

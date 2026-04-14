@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				compiler.h
 *
@@ -44,9 +45,6 @@
 //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _COMPILER_H_
-#define _COMPILER_H_
-
 /* note: intel's icc defines both __ICC & __INTEL_COMPILER.
  * Also, some compilers other than gcc define __GNUC__,
  * therefore gcc should be checked last
@@ -60,7 +58,12 @@
 #ifdef _MSC_VER
 #define LM_FINITE _finite // MSVC
 #elif defined(__ICC) || defined(__INTEL_COMPILER) || defined(__GNUC__)
-#define LM_FINITE finite // ICC, GCC
+#  ifdef __APPLE__
+#  include <math.h>
+#  define LM_FINITE isfinite // Apple
+#  else
+#  define LM_FINITE finite // ICC, GCC
+#  endif
 #else
 #define LM_FINITE finite // other than MSVC, ICC, GCC, let's hope this will work
 #endif
@@ -72,5 +75,3 @@
 #else
 #define LM_ISINF(x) isinf(x) // other than MSVC, ICC, GCC, let's hope this will work
 #endif
-
-#endif /* _COMPILER_H_ */

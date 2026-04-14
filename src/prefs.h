@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				prefs.h
 *
@@ -7,7 +8,7 @@
 *
 *	This file part of:	SExtractor
 *
-*	Copyright:		(C) 1993-2015 Emmanuel Bertin -- IAP/CNRS/UPMC
+*	Copyright:		(C) 1993-2023 IAP/CNRS/SorbonneU
 *
 *	License:		GNU General Public License
 *
@@ -22,20 +23,13 @@
 *	You should have received a copy of the GNU General Public License
 *	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		02/12/2015
+*	Last modified:		07/03/2023
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-#ifndef _PROFIT_H_
 #include        "profit.h"
-#endif
 
-#ifndef _PATTERN_H_
 #include        "pattern.h"
-#endif
-
-#ifndef _PREFS_H_
-#define _PREFS_H_
 
 /*----------------------------- Internal constants --------------------------*/
 
@@ -50,7 +44,7 @@ typedef struct
   char		**command_line;				/* Command line */
   int		ncommand_line;				/* nb of params */
   char		prefs_name[MAXCHAR];			/* prefs filename*/
-  char		*(image_name[2]);			/* image filenames */
+  char		image_name[2][MAXCHAR];			/* image filenames */
   int		nimage_name;				/* nb of params */
   char		cat_name[MAXCHAR];			/* catalog filename*/
   char		head_suffix[MAXCHAR];			/* ext. header suffix */
@@ -136,6 +130,7 @@ typedef struct
   int		backfsize[2];				/* bkgnd filt. size */
   int		nbackfsize;				/* nb of params */
   double	backfthresh;				/* bkgnd fil. thresh */
+  double	back_pearson;				/* Pearson's factor */
   enum	{GLOBAL, LOCAL}			pback_type;	/* phot. bkgnd type */
   int		pback_size;				/* rect. ann. width */
 /*----- memory */
@@ -235,7 +230,7 @@ typedef struct
   int		prof_flag;				/* Profile-fitting */
   int		dprof_flag;				/* Det. Prof.-fitting */
   int		pattern_flag;				/* Pattern-fitting */
-/*----- Profile-fitting */
+/*----- Model-fitting */
   int		prof_vectorsize;			/* nb of params */
   int		prof_errvectorsize;			/* nb of params */
   int		prof_errmatrixsize[2];			/* nb of params */
@@ -254,7 +249,7 @@ typedef struct
   int		nthreads;			/* Number of active threads */
   }	prefstruct;
 
-  prefstruct		prefs;
+extern prefstruct	prefs;
 
 /*-------------------------------- protos -----------------------------------*/
 extern int	cistrcmp(char *cs, char *ct, int mode);
@@ -264,4 +259,3 @@ extern void	dumpprefs(int state),
 		preprefs(void),
 		readprefs(char *filename,char **argkey,char **argval,int narg),
 		useprefs(void);
-#endif

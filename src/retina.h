@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				retina.h
 *
@@ -7,7 +8,7 @@
 *
 *	This file part of:	SExtractor
 *
-*	Copyright:		(C) 1995-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
+*	Copyright:		(C) 1995-2020 IAP/CNRS/SorbonneU
 *
 *	License:		GNU General Public License
 *
@@ -22,7 +23,7 @@
 *	You should have received a copy of the GNU General Public License
 *	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		11/10/2010
+*	Last modified:		15/07/2020
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -37,8 +38,6 @@ typedef struct structreti
   float		minnorm;	/* Minimum normalisation factor */
   struct structbpann	*bpann;	/* The neural network */
   }     retistruct;
-
-retistruct	*theretina;
 
 /*------------------------------- functions ---------------------------------*/
 

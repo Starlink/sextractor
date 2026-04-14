@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				key.h
 *
@@ -7,7 +8,7 @@
 *
 *	This file part of:	AstrOmatic software
 *
-*	Copyright:		(C) 1993-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
+*	Copyright:		(C) 1993-2020 IAP/CNRS/SorbonneU
 *
 *	License:		GNU General Public License
 *
@@ -23,7 +24,7 @@
 *	along with AstrOmatic software.
 *	If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		10/10/2010
+*	Last modified:		15/07/2020
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -51,5 +52,5 @@ typedef struct
 
 /*---------------------------------- protos --------------------------------*/
 
-int	findkeys(char *str, char key[][32], int mode);
+extern int	findkeys(char *str, char key[][32], int mode);
 

@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				fitswcs.h
 *
@@ -26,9 +27,6 @@
 *	Last modified:		08/03/2016
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
-
-#ifndef _FITSWCS_H_
-#define _FITSWCS_H_
 
 /*-------------------------------- macros -----------------------------------*/
 
@@ -119,7 +117,9 @@ extern wcsstruct	*create_wcs(char **ctype, double *crval, double *crpix,
 			*read_wcs(tabstruct *tab);
 
 extern double		fmod_0_p360(double angle),
+			fmod_0_pmod(double angle, double mod),
 			fmod_m90_p90(double angle),
+			fmod_mmod_pmod(double angle, double mod),
 			sextodegal(char *hms),
 			sextodegde(char *dms),
 			wcs_dist(wcsstruct *wcs,
@@ -166,5 +166,3 @@ extern void		b2j(double yearobs, double alphain, double deltain,
 			range_wcs(wcsstruct *wcs),
 			wipe_wcs(tabstruct *tab),
 			write_wcs(tabstruct *tab, wcsstruct *wcs);
-
-#endif

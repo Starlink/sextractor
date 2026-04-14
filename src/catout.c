@@ -7,7 +7,7 @@
 *
 *	This file part of:	SExtractor
 *
-*	Copyright:		(C) 1993-2015 Emmanuel Bertin -- IAP/CNRS/UPMC
+*	Copyright:		(C) 1993-2023 CFHT/IAP/CNRS/SorbonneU
 *
 *	License:		GNU General Public License
 *
@@ -22,7 +22,7 @@
 *	You should have received a copy of the GNU General Public License
 *	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		26/01/2015
+*	Last modified:		26/02/2023
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -45,11 +45,17 @@
 #include	"sexheadsc.h"
 #include	"xml.h"
 
+objstruct	outobj, flagobj;
+obj2struct	outobj2, flagobj2;
+
 catstruct	*fitscat;
 tabstruct	*objtab = NULL;
 FILE		*ascfile;
 char		*buf;
 int		catopen_flag = 0;
+
+double		ddummy;
+int		idummy;
 
 /******************************* readcatparams *******************************/
 /*
@@ -1000,7 +1006,7 @@ void	endcat(char *error)
       break;
 
     case ASCII_SKYCAT:
-      fprintf(ascfile, skycattail);
+      fprintf(ascfile, "%s", skycattail);
       if (!prefs.pipe_flag)
         fclose(ascfile);
       break;
@@ -1053,7 +1059,7 @@ void	reendcat()
   {
    keystruct	*key;
    tabstruct	*tab;
-   OFF_T	pos;
+   OFF_T2	pos;
    char		*head;
 
   switch(prefs.cat_type)
@@ -1080,6 +1086,7 @@ void	reendcat()
       QFTELL(fitscat->file, pos, fitscat->filename);
       QFSEEK(fitscat->file, tab->headpos, SEEK_SET, fitscat->filename);
       save_tab(fitscat, tab);
+      remove_tab(fitscat, "LDAC_IMHEAD", 0);
       QFSEEK(fitscat->file, pos, SEEK_SET, fitscat->filename);
       break;
 
@@ -1119,6 +1126,5 @@ void	zerocat(void)
 
   return;
   }
-
 
 

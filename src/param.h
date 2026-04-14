@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				param.h
 *
@@ -26,8 +27,8 @@
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-objstruct	outobj;
-obj2struct	outobj2;
+extern objstruct	outobj;
+extern obj2struct	outobj2;
 
 /*--------------------------------- initialization --------------------------*/
 keystruct	objkey[] = {

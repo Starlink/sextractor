@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				preflist.h
 *
@@ -7,7 +8,7 @@
 *
 *	This file part of:	SExtractor
 *
-*	Copyright:		(C) 1993-2015 Emmanuel Bertin -- IAP/CNRS/UPMC
+*	Copyright:		(C) 1993-2020 IAP/CNRS/SorbonneU
 *
 *	License:		GNU General Public License
 *
@@ -22,15 +23,13 @@
 *	You should have received a copy of the GNU General Public License
 *	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		12/01/2015
+*	Last modified:		07/03/2023
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 #include "key.h"
 
-#ifndef _XML_H_
 #include "xml.h"
-#endif
 
 #ifdef  USE_THREADS
 #define THREADS_PREFMAX THREADS_NMAX
@@ -39,7 +38,7 @@
 #endif
 
 /*-------------------------------- initialization ---------------------------*/
- int	idummy;
+ extern int	idummy;
 
  pkeystruct key[] =
  {
@@ -61,6 +60,7 @@
   {"BACK_FILTERSIZE", P_INTLIST, prefs.backfsize, 1,11, 0.0,0.0,
     {""}, 1,2, &prefs.nbackfsize},
   {"BACK_FILTTHRESH", P_FLOAT, &prefs.backfthresh, 0,0, 0.0,BIG},
+  {"BACK_PEARSON", P_FLOAT, &prefs.back_pearson, 0,0, 1.0,BIG},
   {"BACKPHOTO_THICK", P_INT, &prefs.pback_size, 1, 256},
   {"BACKPHOTO_TYPE", P_KEY, &prefs.pback_type, 0,0, 0.0,0.0,
    {"GLOBAL","LOCAL",""}},
@@ -261,6 +261,9 @@ char *default_prefs[] =
 " ",
 "*BACK_TYPE        AUTO           # AUTO or MANUAL",
 "*BACK_VALUE       0.0            # Default background value in MANUAL mode",
+"*BACK_PEARSON     2.5            # Pearson's factor alpha >= 1 with",
+"*                                # (mode - mean) ~ alpha * (median - mean)",
+"*                                # Legacy value is 2.5, but 3.5 is more accurate",
 "BACK_SIZE        64             # Background mesh: <size> or <width>,<height>",
 "BACK_FILTERSIZE  3              # Background filter: <size> or <width>,<height>",
 " ",

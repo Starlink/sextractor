@@ -1,29 +1,28 @@
 /*
-*                               types.h
+*				types.h
 *
 * Global type definitions.
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*       This file part of:      SExtractor
+*	This file part of:	SExtractor
 *
-*       Copyright:              (C) 1993-2013 Emmanuel Bertin -- IAP/CNRS/UPMC
-*       Copyright:              (C) 2000-2014 Science and Technology Research Council
+*	Copyright:		(C) 1993-2015 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*       License:                GNU General Public License
+*	License:		GNU General Public License
 *
-*       SExtractor is free software: you can redistribute it and/or modify
-*       it under the terms of the GNU General Public License as published by
-*       the Free Software Foundation, either version 3 of the License, or
-*       (at your option) any later version.
-*       SExtractor is distributed in the hope that it will be useful,
-*       but WITHOUT ANY WARRANTY; without even the implied warranty of
-*       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*       GNU General Public License for more details.
-*       You should have received a copy of the GNU General Public License
-*       along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*       Last modified:          05/07/2013
+*	Last modified:		02/12/2015
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -34,7 +33,6 @@
 *	                20/02/02 (PWD): Added ndfposx and ndfposy
 *	                                members.
 */
-
 
 #include <stdio.h>
 
@@ -102,6 +100,7 @@ typedef struct
   {
 /* ---- basic parameters */
   int		number;				/* ID */
+  int		id_parent;			/* Parent ID */
   int		fdnpix;				/* nb of extracted pix */
   int		dnpix;				/* nb of pix above thresh  */
   int		npix;				/* "" in measured frame */
@@ -117,6 +116,7 @@ typedef struct
 /* ---- astrometric data */
   int		peakx,peaky;			/* pos of brightest pix */
   double       	mx, my;				/* barycenter */
+  float		dmx, dmy;			/* dgeo barycenter correction */
   double	poserr_mx2, poserr_my2,
 		poserr_mxy;			/* Error ellips moments */
 /* ---- morphological data */			
@@ -186,7 +186,7 @@ typedef struct
   double	mamaposx,mamaposy;		/* "MAMA" pos. in pixels */
   float		sposx,sposy;			/* single precision pos. */
   float		ndfposx,ndfposy;		/* PWD: single precision pos. 
-						   NDF Pixel coordinates */
+  float		pos_dgeox, pos_dgeoy;		/* d.geom. correction to pos. */
   float		poserr_a, poserr_b,
 		poserr_theta;			/* Error ellips parameters */
   float		poserr_cxx, poserr_cyy,
@@ -232,9 +232,12 @@ typedef struct
   int		assoc_number;			/* nb of ASSOCiated objects */
   float		*vignet;			/* Pixel data */
   float		*vigshift;			/* (Shifted) pixel data */
+  float		*vignet_dgeox;			/* Differential x geom. data */
+  float		*vignet_dgeoy;			/* Differential y geom. data */
 
 /* Windowed measurements */
   double	winpos_x,winpos_y;		/* Windowed barycenter */
+  float		winpos_dgeox, winpos_dgeoy;	/* d.geom. corr. to win. pos */
   double	winposerr_mx2, winposerr_my2,
 		winposerr_mxy;			/* Error ellips moments */
   float		winposerr_a, winposerr_b,
@@ -586,6 +589,7 @@ typedef struct pic
   int		yblank;			/* y blanking limit (highest+1) */
   PIXTYPE	*strip;			/* pointer to the image buffer */
   FLAGTYPE	*fstrip;		/* pointer to the FLAG buffer */
+  PIXTYPE	*dgeostrip[2];		/* pointers to diff. geometry buffers */
   int		stripheight;		/* height  of a strip (in lines) */
   int		stripmargin;		/* number of lines in margin */
   int		stripstep;		/* number of lines at each read */

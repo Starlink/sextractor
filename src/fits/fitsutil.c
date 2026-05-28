@@ -278,7 +278,11 @@ int	fitspick(char *fitsline, char *keyword, void *ptr, h_type *htype,
 /*-- Handle floats*/
     if (i==80 || fitsline[i]!=(char)'.') 
 /*---- Handle ints*/
+      {
       *((int *)ptr) = atoi(fitsline+j);
+      *htype = H_INT;
+      *ttype = T_LONG;
+      }
     else
       {
       fixexponent(fitsline);

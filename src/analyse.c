@@ -1,29 +1,28 @@
 /*
-*                               analyse.c
+*				analyse.c
 *
 * Do measurements on detections.
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*       This file part of:      SExtractor
+*	This file part of:	SExtractor
 *
-*       Copyright:              (C) 1993-2011 Emmanuel Bertin -- IAP/CNRS/UPMC
-*       Copyright:              (C) 2000-2014 Science and Technology Facilities Council
+*	Copyright:		(C) 1993-2016 IAP/CNRS/UPMC
 *
-*       License:                GNU General Public License
+*	License:		GNU General Public License
 *
-*       SExtractor is free software: you can redistribute it and/or modify
-*       it under the terms of the GNU General Public License as published by
-*       the Free Software Foundation, either version 3 of the License, or
-*       (at your option) any later version.
-*       SExtractor is distributed in the hope that it will be useful,
-*       but WITHOUT ANY WARRANTY; without even the implied warranty of
-*       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*       GNU General Public License for more details.
-*       You should have received a copy of the GNU General Public License
-*       along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*       Last modified:          12/09/2013
+*	Last modified:		16/11/2016
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -42,10 +41,12 @@
 #include	<string.h>
 
 #include	"define.h"
+#include	"key.h"
 #include	"globals.h"
 #include	"prefs.h"
 #include	"fits/fitscat.h"
 #include	"back.h"
+#include	"dgeo.h"
 #include	"check.h"
 #include	"assoc.h"
 #include	"astrom.h"
@@ -220,6 +221,10 @@ void  examineiso(picstruct *field, picstruct *dfield, objstruct *obj,
         err += cdpix/gain;
       x = PLIST(pixt,x) - xm;
       y = PLIST(pixt,y) - ym;
+      if PLISTEXIST(dgeo) {
+        x -= PLISTPIX(pixt, dgeox);
+        y -= PLISTPIX(pixt, dgeoy);
+      }
       esum += err;
       emx2 += err*x*x;
       emy2 += err*y*y;
@@ -338,9 +343,9 @@ void  examineiso(picstruct *field, picstruct *dfield, objstruct *obj,
           threshs[i] = 0.0;
       }
     for (pixt=pixel+obj->firstpix; pixt>=pixel; pixt=pixel+PLIST(pixt,nextpix))
-       for (i=NISO,iso=obj->iso,thresht=threshs;
-            i-- && PLIST(pixt,value)>*(thresht++);)
-          (*(iso++))++;
+      for (i=NISO,iso=obj->iso,thresht=threshs;
+		i-- && PLIST(pixt,value)>*(thresht++);)
+        (*(iso++))++;
     }
 
 /* Put objects in "segmentation check-image" */
@@ -380,6 +385,10 @@ void  examineiso(picstruct *field, picstruct *dfield, objstruct *obj,
           {
           dx = PLIST(pixt,x) - mx;
           dy = PLIST(pixt,y) - my;
+          if PLISTEXIST(dgeo) {
+            dx -= PLISTPIX(pixt, dgeox);
+            dy -= PLISTPIX(pixt, dgeoy);
+          }
           lpix = log(pix);
           inverr2 = pix*pix;
           s += inverr2;
@@ -417,7 +426,8 @@ void  examineiso(picstruct *field, picstruct *dfield, objstruct *obj,
 Final processing of object data, just before saving it to the catalog.
 */
 void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
-		picstruct *dwfield, int n, objliststruct *objlist)
+		picstruct *dwfield, picstruct *dgeofield,
+		int n, objliststruct *objlist)
   {
    objstruct		*obj;
    checkstruct		*check;
@@ -443,6 +453,8 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
 /* Source position */
   obj2->sposx = (float)(obj2->posx = obj->mx+1.0); /* That's standard FITS */
   obj2->sposy = (float)(obj2->posy = obj->my+1.0);
+  obj2->pos_dgeox = obj->dmx;
+  obj2->pos_dgeoy = obj->dmy;
 
 /* Integer coordinates */
   ix=(int)(obj->mx+0.49999);
@@ -578,7 +590,7 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
 /*--------------------------- Windowed barycenter --------------------------*/
     if (FLAG(obj2.winpos_x))
       {
-      compute_winpos(field, wfield, obj);
+      compute_winpos(field, wfield, dgeofield, obj);
 /*---- Express positions in FOCAL or WORLD coordinates */
       if (FLAG(obj2.winpos_xf) || FLAG(obj2.winpos_xw))
         astrom_winpos(field, obj);
@@ -717,14 +729,35 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
       copyimage_center(field, outobj2.vigshift, prefs.vigshiftsize[0],
 		prefs.vigshiftsize[1], obj->mx, obj->my);
 
+    if (dgeofield) {
+      if (FLAG(obj2.vignet_dgeox) && FLAG(obj2.vignet_dgeoy)
+	&& prefs.vignet_dgeoxsize[0] == prefs.vignet_dgeoysize[0]
+	&& prefs.vignet_dgeoxsize[1] == prefs.vignet_dgeoysize[1])
+        dgeo_copy(dgeofield, outobj2.vignet_dgeox , outobj2.vignet_dgeoy,
+		prefs.vignet_dgeoxsize[0],prefs.vignet_dgeoxsize[1], ix,iy);
+      else {
+        if (FLAG(obj2.vignet_dgeox)) 
+          dgeo_copy(dgeofield, outobj2.vignet_dgeox, NULL,
+		prefs.vignet_dgeoxsize[0],prefs.vignet_dgeoxsize[1], ix,iy);
+        if (FLAG(obj2.vignet_dgeoy)) 
+          dgeo_copy(dgeofield, NULL, outobj2.vignet_dgeoy,
+		prefs.vignet_dgeoysize[0],prefs.vignet_dgeoysize[1], ix,iy);
+      }
+    }
+
+/*----- Pre-compute mags in case they are needed for PSF dependency */
+    if (prefs.psffit_flag || prefs.prof_flag)
+      computemags(field, obj);
+
 /*------------------------------- PSF fitting ------------------------------*/
+
     nsub = 1;
     if (prefs.psffit_flag)
       {
       if (prefs.dpsffit_flag)
         double_psf_fit(thepsf, field, wfield, obj, thedpsf, dfield, dwfield);
       else
-      psf_fit(thepsf, field, wfield, obj);
+        psf_fit(thepsf, field, wfield, obj);
       obj2->npsf = thepsfit->npsf;
       nsub = thepsfit->npsf;
       if (nsub<1)
@@ -734,8 +767,7 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
 /*----------------------------- Profile fitting -----------------------------*/
 #ifdef USE_MODEL
     if (prefs.prof_flag)
-      {
-      profit_fit(theprofit, field, wfield, obj, obj2);
+      profit_fit(theprofit, field, wfield, dgeofield, obj, obj2);
 /*---- Express positions in FOCAL or WORLD coordinates */
       if (FLAG(obj2.xf_prof) || FLAG(obj2.xw_prof))
         astrom_profpos(field, obj);

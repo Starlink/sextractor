@@ -1,29 +1,28 @@
 /*
-*                               catout.c
+*				catout.c
 *
 * Functions related to catalogue output.
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*       This file part of:      SExtractor
+*	This file part of:	SExtractor
 *
-*       Copyright:              (C) 1993-2013 Emmanuel Bertin -- IAP/CNRS/UPMC
-*       Copyright:              (C) 2000-2014 Science and Technology Research Council
+*	Copyright:		(C) 1993-2015 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*       License:                GNU General Public License
+*	License:		GNU General Public License
 *
-*       SExtractor is free software: you can redistribute it and/or modify
-*       it under the terms of the GNU General Public License as published by
-*       the Free Software Foundation, either version 3 of the License, or
-*       (at your option) any later version.
-*       SExtractor is distributed in the hope that it will be useful,
-*       but WITHOUT ANY WARRANTY; without even the implied warranty of
-*       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*       GNU General Public License for more details.
-*       You should have received a copy of the GNU General Public License
-*       along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*       Last modified:          12/09/2013
+*	Last modified:		26/01/2015
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -92,9 +91,9 @@ void	readcatparams(char *filename)
 	(i = findkey(keyword,(char *)objkey,sizeof(keystruct)))!=RETURN_ERROR)
         {
         key = objkey+i;
-        add_key(key, objtab, 0);
+        if (add_key(key, objtab, 0) != RETURN_ERROR)
+          thecat.nparam++;
         *((char *)key->ptr) = (char)'\1';
-        thecat.nparam++;
         if (key->naxis)
           {
           for (i=0; i<key->naxis; i++)
@@ -488,7 +487,7 @@ void	updateparamflags()
 			| FLAG(obj2.win_cxxw);
 
   FLAG(obj2.win_a) |= FLAG(obj2.win_b) | FLAG(obj2.win_theta)
-			| FLAG(obj2.win_polar) | FLAG(obj2.win_aw); 
+			| FLAG(obj2.win_polar) | FLAG(obj2.win_aw);
   FLAG(obj2.win_cxx) |= FLAG(obj2.win_cyy)
 			| FLAG(obj2.win_cxy) | FLAG(obj2.win_cxxw);
   FLAG(obj2.win_mx2) |= FLAG(obj2.win_my2)
@@ -578,7 +577,8 @@ void	updateparamflags()
   FLAG(obj2.fluxerr_win) |= FLAG(obj2.snr_win);
   FLAG(obj2.flux_win) |= FLAG(obj2.mag_win)|FLAG(obj2.magerr_win)
 			| FLAG(obj2.flux_win) | FLAG(obj2.fluxerr_win);
-  FLAG(obj2.winpos_x) |= FLAG(obj2.winpos_y)
+  FLAG(obj2.winpos_dgeox) |= FLAG(obj2.winpos_dgeoy);
+  FLAG(obj2.winpos_x) |= FLAG(obj2.winpos_y) | FLAG(obj2.winpos_dgeox)
 			| FLAG(obj2.winposerr_mx2) | FLAG(obj2.win_mx2)
 			| FLAG(obj2.winpos_xw) | FLAG(obj2.winpos_xf)
 			| FLAG(obj2.win_flag)

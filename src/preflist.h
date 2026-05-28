@@ -1,29 +1,28 @@
 /*
-*                               preflist.h
+*				preflist.h
 *
 *  Configuration keyword definitions.
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 *
-*       This file part of:      SExtractor
+*	This file part of:	SExtractor
 *
-*       Copyright:              (C) 1993-2012 Emmanuel Bertin -- IAP/CNRS/UPMC
-*       Copyright:              (C) 2000-2014 Science and Technology Research Council
+*	Copyright:		(C) 1993-2015 Emmanuel Bertin -- IAP/CNRS/UPMC
 *
-*       License:                GNU General Public License
+*	License:		GNU General Public License
 *
-*       SExtractor is free software: you can redistribute it and/or modify
-*       it under the terms of the GNU General Public License as published by
-*       the Free Software Foundation, either version 3 of the License, or
-*       (at your option) any later version.
-*       SExtractor is distributed in the hope that it will be useful,
-*       but WITHOUT ANY WARRANTY; without even the implied warranty of
-*       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*       GNU General Public License for more details.
-*       You should have received a copy of the GNU General Public License
-*       along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
+*	SExtractor is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	SExtractor is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	You should have received a copy of the GNU General Public License
+*	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*       Last modified:          30/10/2012
+*	Last modified:		12/01/2015
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -108,6 +107,9 @@
    {""}, 1, 2, &prefs.ndthresh},
   {"DETECT_TYPE", P_KEY, &prefs.detect_type, 0,0, 0.0,0.0,
    {"CCD","PHOTO",""}},
+  {"DGEO_IMAGE", P_STRING, prefs.dgeoimage_name},
+  {"DGEO_TYPE", P_KEY, &prefs.dgeo_type, 0,0, 0.0,0.0,
+   {"NONE","PIXEL", ""}},
   {"FILTER", P_BOOL, &prefs.filter_flag},
   {"FILTER_NAME", P_STRING, prefs.filter_name},
   {"FILTER_THRESH", P_FLOATLIST, prefs.filter_thresh, 0,0,-BIG,BIG,
@@ -237,6 +239,11 @@ char *default_prefs[] =
 "*FLAG_TYPE        OR             # flag pixel combination: OR, AND, MIN, MAX",
 "*                                # or MOST",
 "*",
+"*#----------------------- Differential Geometry Map ---------------------------",
+"*",
+"*DGEO_TYPE        NONE           # Differential geometry map type: NONE or PIXEL",
+"*DGEO_IMAGE       dgeo.fits      # Filename for input differential geometry image",
+"*",
 "#------------------------------ Photometry -----------------------------------",
 " ",
 "PHOT_APERTURES   5              # MAG_APER aperture diameter(s) in pixels",
@@ -269,7 +276,7 @@ char *default_prefs[] =
 "BACK_FILTERSIZE  3              # Background filter: <size> or <width>,<height>",
 " ",
 "BACKPHOTO_TYPE   GLOBAL         # can be GLOBAL or LOCAL",
-"*BACKPHOTO_THICK 24              # thickness of the background LOCAL annulus",
+"*BACKPHOTO_THICK  24             # thickness of the background LOCAL annulus",
 "*BACK_FILTTHRESH  0.0            # Threshold above which the background-",
 "*                                # map filter operates",
 " ",
@@ -328,4 +335,3 @@ char *default_prefs[] =
 "*SOM_NAME         default.som    # File containing Self-Organizing Map weights",
 ""
  };
-

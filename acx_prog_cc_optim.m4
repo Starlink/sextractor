@@ -87,7 +87,7 @@ EOF
 	   $CC -V 2>&1 | grep -i "Compaq C"> /dev/null 2>&1) &&
            $CC -c -fast conftest.c > /dev/null 2>&1 &&
            test -f conftest.o; then
-         prog_cc_optim_flags="-fast"
+        prog_cc_optim_cv_flags="-fast -tune host"
         prog_ld_optim_cv_flags=""
 
       dnl C for AIX Compiler

@@ -30,10 +30,6 @@
 #include "fits/fitscat.h"
 #endif
 
-#ifndef FFTW3_H
-#include FFTW_H
-#endif
-
 /*---------------------------- Internal constants ---------------------------*/
 
 /*------------------------------- Other Macros ------------------------------*/

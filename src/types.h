@@ -185,7 +185,7 @@ typedef struct
   double	pixscale2;			/* Local pixel area */
   double	mamaposx,mamaposy;		/* "MAMA" pos. in pixels */
   float		sposx,sposy;			/* single precision pos. */
-  float		ndfposx,ndfposy;		/* PWD: single precision pos. 
+  float		ndfposx,ndfposy;		/* PWD: single precision pos. */
   float		pos_dgeox, pos_dgeoy;		/* d.geom. correction to pos. */
   float		poserr_a, poserr_b,
 		poserr_theta;			/* Error ellips parameters */

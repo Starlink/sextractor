@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				fitscat.h
 *
@@ -7,7 +8,11 @@
 *
 *	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Copyright:		(C) 1995-2020 IAP/CNRS/SorbonneU
+*	Copyright:		(C) 1994,1997 ESO
+*	          		(C) 1995,1996 Leiden Observatory 
+*	          		(C) 1998-2021 IAP/CNRS/SorbonneU
+*	          		(C) 2021-2023 CFHT/CNRS
+*	          		(C) 2023-2025 CEA/AIM/UParisSaclay
 *
 *	License:		GNU General Public License
 *
@@ -23,17 +28,18 @@
 *	along with AstrOmatic software.
 *	If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		11/02/2020
+*	Last modified:		21/03/2025
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
-
-#ifndef _FITSCAT_H_
-#define _FITSCAT_H_
 
 #include <stdio.h>
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
+#endif
+
+#ifdef HAVE_CFITSIO
+#include CFITSIO_H
 #endif
 
 #define	MAXCHARS	256	/* max. number of characters */
@@ -107,10 +113,11 @@ typedef long long			SLONGLONG;
 typedef union {int l[2];}		SLONGLONG;
 #endif
 
-#if defined(_FILE_OFFSET_BITS) && !defined(OFF_T)
-#define OFF_T	off_t
+// CFITSIO changed OFF_T to OFF_T2 due to clash with cfitsio lib
+#if defined(_FILE_OFFSET_BITS) && !defined(OFF_T2)
+#define OFF_T2	off_t
 #else
-#define OFF_T	long
+#define OFF_T2	long
 #endif
 
 /*------------------------------- constants ---------------------------------*/
@@ -150,6 +157,10 @@ typedef struct structcat
   struct structtab *tab;		/* pointer to the first table */
   int		ntab;			/* number of tables included */
   access_type_t	access_type;		/* READ_ONLY or WRITE_ONLY */
+#ifdef HAVE_CFITSIO
+  int       cfitsio_flag;   /* True if CFITSIO read/write required */
+  fitsfile *cfitsio_infptr;			/* Pointer to the CFITSIO structure */
+#endif
   }		catstruct;
 
 /*-------------------------------- table  ----------------------------------*/
@@ -180,8 +191,8 @@ typedef struct structtab
   char		*headbuf;		/* buffer containing the header */
   int		headnblock;		/* number of FITS blocks */
   char		*bodybuf;		/* buffer containing the body */
-  OFF_T		bodypos;		/* position of the body in the file */
-  OFF_T		headpos;		/* position of the head in the file */
+  OFF_T2	bodypos;		/* position of the body in the file */
+  OFF_T2	headpos;		/* position of the head in the file */
   struct structcat *cat;		/* (original) parent catalog */
   struct structtab *prevtab, *nexttab;	/* previous and next tab in chain */
   int		seg;			/* segment position */
@@ -190,7 +201,12 @@ typedef struct structtab
   int		nkey;			/* number of keys */
   int		swapflag;		/* mapped to a swap file ? */
   char		swapname[MAXCHARS];	/* name of the swapfile */
-  unsigned int	bodysum;		/* Checksum of the FITS body */
+  unsigned int	bodysum;	/* Checksum of the FITS body */
+  int isTileCompressed;		/* is this a tile compressed image?  */
+#ifdef HAVE_CFITSIO
+  int cfitsio_hdunum;				/* FITS HDU number for this 'table' */
+  long cfitsio_currentElement;		/* tracks the current image pixel */
+#endif
   }		tabstruct;
 
 
@@ -218,8 +234,8 @@ extern void	add_cleanupfilename(char *filename),
 		encode_checksum(unsigned int sum, char *str),
 		end_readobj(tabstruct *keytab, tabstruct *tab, char *buf),
 		end_writeobj(catstruct *cat, tabstruct *tab, char *buf),
-		error(int, char *, char *),
-		error_installfunc(void (*func)(char *msg1, char *msg2)),
+		error(int code, const char *msg1, const char *msg2),
+		error_installfunc(void (*func)(const char *msg1, const char *msg2)),
 		fixexponent(char *s),
 		free_body(tabstruct *tab),
 		free_cat(catstruct **cat, int ncat),
@@ -271,6 +287,10 @@ extern int	about_cat(catstruct *cat, FILE *stream),
 		add_tab(tabstruct *tab, catstruct *cat, int pos),
 		blank_keys(tabstruct *tab),
 		close_cat(catstruct *cat),
+#ifdef	HAVE_CFITSIO
+		open_cfitsio(catstruct *cat, access_type_t at),
+		close_cfitsio(catstruct *cat),
+#endif
 		copy_key(tabstruct *tabin, char *keyname, tabstruct *tabout,
 			int pos),
 		copy_tab(catstruct *catin, char *tabname, int seg,
@@ -315,6 +335,7 @@ extern int	about_cat(catstruct *cat, FILE *stream),
 		tformof(char *str, t_type ttype, int n),
 		tsizeof(char *str),
 		update_head(tabstruct *tab),
+		decomp_head(tabstruct *tab),
 		update_tab(tabstruct *tab),
 		verify_checksum(tabstruct *tab),
 		write_obj(tabstruct *tab, char *buf),
@@ -327,9 +348,3 @@ extern FLAGTYPE	*alloc_ibody(tabstruct *tab,
 			void (*func)(FLAGTYPE *ptr, int npix));
 
 extern t_type	ttypeof(char *str);
-
-extern  void	error(int, char *, char *),
-		swapbytes(void *ptr, int nb, int n),
-		warning(char *msg1, char *msg2);
-
-#endif

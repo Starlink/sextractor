@@ -7,7 +7,11 @@
 *
 *	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Copyright:		(C) 1995-2010 IAP/CNRS/SorbonneU
+*	Copyright:		(C) 1994,1997 ESO
+*	          		(C) 1995,1996 Leiden Observatory 
+*	          		(C) 1998-2021 IAP/CNRS/SorbonneU
+*	          		(C) 2021-2023 CFHT/CNRS
+*	          		(C) 2023-2025 CEA/AIM/UParisSaclay
 *
 *	License:		GNU General Public License
 *
@@ -23,7 +27,7 @@
 *	along with AstrOmatic software.
 *	If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		11/02/2020
+*	Last modified:		25/03/2025
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -43,6 +47,10 @@
 #include	"fitscat_defs.h"
 #include	"fitscat.h"
 
+#ifdef	HAVE_CFITSIO
+#include    CFITSIO_H
+#endif
+
 size_t	body_maxram = BODY_DEFRAM,
 	body_maxvram = BODY_DEFVRAM,
 	body_ramleft, body_vramleft, body_ramflag;
@@ -59,13 +67,14 @@ PURPOSE	Allocate memory for and read a FITS data body (read-only). If not
 INPUT	Table (tab) structure.
 OUTPUT	Pointer to the mapped data if OK, or NULL otherwise.
 NOTES	The file pointer must be positioned at the beginning of the data.
-AUTHOR	E. Bertin (IAP)
-VERSION	05/05/2001
+AUTHOR	E. Bertin (CEA/AIM/UParisSaclay)
+VERSION	25/03/2025
  ***/
 PIXTYPE	*alloc_body(tabstruct *tab, void (*func)(PIXTYPE *ptr, int npix))
   {
    FILE		*file;
    PIXTYPE	*buffer;
+   int  n;
    size_t	npix, size, sizeleft, spoonful;
 
   if (!body_ramflag)
@@ -85,7 +94,16 @@ PIXTYPE	*alloc_body(tabstruct *tab, void (*func)(PIXTYPE *ptr, int npix))
 			tab->extname);
 
 /* Decide if the data will go in physical memory or on swap-space */
+#ifdef	HAVE_CFITSIO
+  if (tab->isTileCompressed) {
+    npix = (size_t)tab->naxisn[0];
+    for (n=1; n<tab->naxis; n++)
+      npix *= (size_t)tab->naxisn[n];
+  } else
   npix = tab->tabsize/tab->bytepix;
+#else
+  npix = tab->tabsize/tab->bytepix;
+#endif
   size = npix*sizeof(PIXTYPE);
   if (size < body_ramleft)
     {
@@ -93,6 +111,9 @@ PIXTYPE	*alloc_body(tabstruct *tab, void (*func)(PIXTYPE *ptr, int npix))
     if ((tab->bodybuf = malloc(size)))
       {
       QFSEEK(tab->cat->file, tab->bodypos, SEEK_SET, tab->cat->filename);
+#ifdef	HAVE_CFITSIO
+      tab->cfitsio_currentElement = 1;
+#endif
       read_body(tab, (PIXTYPE *)tab->bodybuf, npix);
 /*---- Apply pixel processing */
       if (func)
@@ -120,6 +141,9 @@ PIXTYPE	*alloc_body(tabstruct *tab, void (*func)(PIXTYPE *ptr, int npix))
     if (!spoonful)
       spoonful = DATA_BUFSIZE;
     QFSEEK(tab->cat->file, tab->bodypos, SEEK_SET, tab->cat->filename);
+#ifdef	HAVE_CFITSIO
+    tab->cfitsio_currentElement = 1;
+#endif
     read_body(tab, buffer, spoonful/sizeof(PIXTYPE));
 /*-- Apply pixel processing */
     if (func)
@@ -158,8 +182,8 @@ PURPOSE	Allocate memory for and read a FITS integer data body (read-only).
 INPUT	Table (tab) structure.
 OUTPUT	Pointer to the mapped data if OK, or NULL otherwise.
 NOTES	The file pointer must be positioned at the beginning of the data.
-AUTHOR	E. Bertin (IAP)
-VERSION	30/01/2012
+AUTHOR	E. Bertin (CEA/AIM/UParisSaclay)
+VERSION	21/03/2025
  ***/
 FLAGTYPE	*alloc_ibody(tabstruct *tab,
 			void (*func)(FLAGTYPE *ptr, int npix))
@@ -193,6 +217,9 @@ FLAGTYPE	*alloc_ibody(tabstruct *tab,
     if ((tab->bodybuf = malloc(size)))
       {
       QFSEEK(tab->cat->file, tab->bodypos, SEEK_SET, tab->cat->filename);
+#ifdef	HAVE_CFITSIO
+      tab->cfitsio_currentElement = 1;
+#endif
       read_ibody(tab, (FLAGTYPE *)tab->bodybuf, npix);
 /*---- Apply pixel processing */
       if (func)
@@ -220,6 +247,9 @@ FLAGTYPE	*alloc_ibody(tabstruct *tab,
     if (!spoonful)
       spoonful = DATA_BUFSIZE;
     QFSEEK(tab->cat->file, tab->bodypos, SEEK_SET, tab->cat->filename);
+#ifdef	HAVE_CFITSIO
+    tab->cfitsio_currentElement = 1;
+#endif
     read_ibody(tab, buffer, spoonful/sizeof(FLAGTYPE));
 /*-- Apply pixel processing */
     if (func)
@@ -294,6 +324,82 @@ void	free_body(tabstruct *tab)
   return;
   }
 
+#ifdef	HAVE_CFITSIO
+/******* readTileCompressed ***************************************************
+ *
+ * Function to read a chunk of a tile-compressed FITS image
+ *
+ ***/
+void readTileCompressed(tabstruct *tab,  size_t	spoonful, void *bufdata0) {
+
+   catstruct    *cat;
+   int  status, hdutype;
+
+  status = 0;
+  // Exit if no parent catalog or CFITSIO information
+  if (!(cat = tab->cat) || !cat->cfitsio_infptr)
+    return;
+
+  // Move to correct HDU
+  fits_movabs_hdu(cat->cfitsio_infptr, tab->cfitsio_hdunum, &hdutype, &status);
+  if (status != 0) {
+    fprintf(stderr, "Error moving to HDU %d\n", tab->cfitsio_hdunum);
+    fits_report_error(stderr, status);
+  }
+
+  // pixels count from 1
+  if (!tab->cfitsio_currentElement)
+    tab->cfitsio_currentElement = 1;
+
+  // now read section of image
+   int datatype;
+  switch(tab->bitpix){
+    case BYTE_IMG:
+      datatype = TBYTE;
+      break;
+    case SHORT_IMG:
+      datatype = TSHORT;
+      break;
+    case LONG_IMG:
+      datatype = TLONG;
+      break;
+    case FLOAT_IMG:
+      datatype = TFLOAT;
+      break;
+    case DOUBLE_IMG:
+      datatype = TDOUBLE;
+      break;
+    default:
+      datatype = TFLOAT;
+      break;
+  }
+
+   int anynul;
+   double bscale = 1.0, bzero = 0.0, nulval = 0.;
+
+  // turn off any scaling so that we copy raw pixel values
+  status = 0;
+  fits_set_bscale(cat->cfitsio_infptr,  bscale, bzero, &status);
+
+  // now read the image
+  status = 0;
+  fits_read_img(cat->cfitsio_infptr, datatype, tab->cfitsio_currentElement,
+    spoonful, &nulval, bufdata0, &anynul, &status);
+
+  // report reading error
+  if (status) {
+    fprintf(stderr, "CFITSIO ERROR reading start=%d end=%d absolute end=%d\n",
+	tab->cfitsio_currentElement,
+	(tab->cfitsio_currentElement + spoonful),
+	(tab->naxisn[0]*tab->naxisn[1]));
+    fits_report_error(stderr, status);
+  }
+
+  // update file 'pointer'
+  tab->cfitsio_currentElement += spoonful;
+}
+
+#endif // HAVE_CFITSIO
 
 /******* read_body ************************************************************
 PROTO	read_body(tabstruct *tab, PIXTYPE *ptr, long size)
@@ -303,8 +409,8 @@ INPUT	A pointer to the tab structure,
 	the number of elements to be read.
 OUTPUT	-.
 NOTES	.
-AUTHOR	E. Bertin (IAP)
-VERSION	11/02/2020
+AUTHOR	E. Bertin (CEA/AIM/UParisSaclay)
+VERSION	21/03/2025
  ***/
 void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
   {
@@ -323,15 +429,15 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
   int			curval, dval, blankflag, bswapflag, ival, iblank;
   
   size_t	i, bowl, spoonful, npix;
-  PIXTYPE	bs,bz;
-
+  double	bs,bz;
 
 /* a NULL cat structure indicates that no data can be read */
   if (!(cat = tab->cat))
     return;
 
-  bs = (PIXTYPE)tab->bscale;
-  bz = (PIXTYPE)tab->bzero;
+  bs = tab->bscale;
+  bz = tab->bzero;
+
   blankflag = tab->blankflag;
   bswapflag = *((char *)&ashort);	// Byte-swapping flag
 
@@ -346,7 +452,15 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
         if (spoonful>size)
           spoonful = size;
         bufdata = (char *)bufdata0;
+
+#ifdef	HAVE_CFITSIO
+        if (tab->isTileCompressed && cat->cfitsio_infptr)
+       	  readTileCompressed(tab, spoonful, (void *)bufdata0);
+        else
+          QFREAD(bufdata, spoonful*tab->bytepix, cat->file, cat->filename);
+#else
         QFREAD(bufdata, spoonful*tab->bytepix, cat->file, cat->filename);
+#endif // HAVE_CFITSIO
         switch(tab->bitpix)
           {
           case BP_BYTE:
@@ -383,7 +497,11 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
             break;
 
           case BP_SHORT:
+#ifdef	HAVE_CFITSIO
+            if (!tab->isTileCompressed && bswapflag)
+#else
             if (bswapflag)
+#endif
               swapbytes(bufdata, 2, spoonful);
             if (blankflag)
 	      {
@@ -418,7 +536,11 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
             break;
 
           case BP_LONG:
+#ifdef	HAVE_CFITSIO
+            if (!tab->isTileCompressed && bswapflag)
+#else
             if (bswapflag)
+#endif
               swapbytes(bufdata, 4, spoonful);
             if (blankflag)
 	      {
@@ -454,7 +576,11 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
 
 #ifdef HAVE_LONG_LONG_INT
           case BP_LONGLONG:
+#ifdef	HAVE_CFITSIO
+            if (!tab->isTileCompressed && bswapflag)
+#else
             if (bswapflag)
+#endif
               swapbytes(bufdata, 8, spoonful);
             if (blankflag)
 	      {
@@ -489,7 +615,11 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
             break;
 #endif
           case BP_FLOAT:
+#ifdef	HAVE_CFITSIO
+            if (!tab->isTileCompressed && bswapflag)
+#else
             if (bswapflag)
+#endif
               swapbytes(bufdata, 4, spoonful);
 #pragma ivdep
             for (i=spoonful; i--; bufdata += sizeof(float))
@@ -499,7 +629,12 @@ void	read_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
           case BP_DOUBLE:
             if (bswapflag)
 	      {
+#ifdef	HAVE_CFITSIO
+              if (!tab->isTileCompressed)
+                swapbytes(bufdata, 8, spoonful);
+#else
               swapbytes(bufdata, 8, spoonful);
+#endif
 #pragma ivdep
               for (i=spoonful; i--; bufdata += sizeof(double))
                 *(ptr++) = ((0x7ff00000 & *(unsigned int *)(bufdata+4))
@@ -632,7 +767,7 @@ INPUT	A pointer to the tab structure,
 OUTPUT	-.
 NOTES	.
 AUTHOR	E. Bertin (IAP)
-VERSION	11/02/2020
+VERSION	26/08/2020
  ***/
 void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
   {
@@ -660,7 +795,15 @@ void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
         if (spoonful>size)
           spoonful = size;
         bufdata = (char *)bufdata0;
+
+#ifdef	HAVE_CFITSIO
+        if (tab->isTileCompressed)
+          readTileCompressed(tab, spoonful, (void *)bufdata0);
+        else
+          QFREAD(bufdata, spoonful*tab->bytepix, cat->file, cat->filename);
+#else
         QFREAD(bufdata, spoonful*tab->bytepix, cat->file, cat->filename);
+#endif
         switch(tab->bitpix)
           {
           case BP_BYTE:
@@ -670,7 +813,11 @@ void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
             break;
 
           case BP_SHORT:
+#ifdef	HAVE_CFITSIO
+            if (!tab->isTileCompressed && bswapflag)
+#else
             if (bswapflag)
+#endif
               swapbytes(bufdata, 2, spoonful);
 #pragma ivdep
             for (i=spoonful; i--; bufdata += sizeof(unsigned short))
@@ -678,7 +825,11 @@ void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
             break;
 
           case BP_LONG:
+#ifdef	HAVE_CFITSIO
+            if (!tab->isTileCompressed && bswapflag)
+#else
             if (bswapflag)
+#endif
               swapbytes(bufdata, 4, spoonful);
 #pragma ivdep
             for (i=spoonful; i--; bufdata += sizeof(unsigned int))
@@ -687,7 +838,11 @@ void	read_ibody(tabstruct *tab, FLAGTYPE *ptr, size_t size)
 
 #ifdef HAVE_LONG_LONG_INT
           case BP_LONGLONG:
+#ifdef	HAVE_CFITSIO
+            if (!tab->isTileCompressed && bswapflag)
+#else
             if (bswapflag)
+#endif
               swapbytes(bufdata, 8, spoonful);
 #pragma ivdep
             for (i=spoonful; i--; bufdata += sizeof(ULONGLONG))
@@ -814,8 +969,8 @@ INPUT	A pointer to the tab structure,
 	the number of elements to be written.
 OUTPUT	-.
 NOTES	.
-AUTHOR	E. Bertin (IAP)
-VERSION	11/02/2020
+AUTHOR	E. Bertin (CEA/AIM/UParisSaclay)
+VERSION	21/03/2025
  ***/
 void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
   {
@@ -931,7 +1086,12 @@ void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
 #pragma ivdep
             for (i=spoonful; i--;)
               *(bufdata++) = (*(ptr++)-bz)/bs;
+
+#ifdef	HAVE_CFITSIO
+            if (!cat->cfitsio_infptr && bswapflag)
+#else
             if (bswapflag)
+#endif
               swapbytes(cbufdata0, 4, spoonful);
             }
             break;
@@ -952,7 +1112,60 @@ void	write_body(tabstruct *tab, PIXTYPE *ptr, size_t size)
                                 "read_body()");
             break;
           }
+
+#ifdef	HAVE_CFITSIO
+          // if cfitsio output file has been set up, then proceed to write
+          if (cat->cfitsio_infptr) {
+            // now read section of image
+             int	datatype;
+            switch(tab->bitpix) {
+              case BYTE_IMG:
+                datatype = TBYTE;
+                break;
+              case SHORT_IMG:
+                datatype = TSHORT;
+                  break;
+              case LONG_IMG:
+                datatype = TLONG;
+                break;
+              case FLOAT_IMG:
+                datatype = TFLOAT;
+                break;
+              case DOUBLE_IMG:
+                datatype = TDOUBLE;
+                break;
+              default:
+                datatype = TFLOAT;
+                break;
+            }
+
+            // turn off any scaling so that we copy the raw pixel values
+             double	*array,
+			bscale = 1.0,
+			bzero = 0.0,
+			nulval = 0.0;
+
+             int	status = 0;
+
+            fits_set_bscale(cat->cfitsio_infptr, bscale, bzero, &status);
+            status = 0;
+            fits_write_img(cat->cfitsio_infptr, datatype,
+                tab->cfitsio_currentElement, spoonful, cbufdata0, &status);
+
+            if (status) {
+              fprintf(stderr, "CFITSIO ERROR writing start=%d end=%d absolute end=%d\n",
+			tab->cfitsio_currentElement, (tab->cfitsio_currentElement + spoonful),
+			(tab->naxisn[0]*tab->naxisn[1]));
+              fits_report_error(stderr, status);
+            }
+
+            tab->cfitsio_currentElement  = tab->cfitsio_currentElement  + spoonful;
+        } else
+          // otherwise, continue with usual AstrOmatic fits writing routine
+          QFWRITE(cbufdata0, spoonful*tab->bytepix, cat->file, cat->filename);
+#else
         QFWRITE(cbufdata0, spoonful*tab->bytepix, cat->file, cat->filename);
+#endif // HAVE_CFITSIO
         }
       break;
 

@@ -736,10 +736,10 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
         dgeo_copy(dgeofield, outobj2.vignet_dgeox , outobj2.vignet_dgeoy,
 		prefs.vignet_dgeoxsize[0],prefs.vignet_dgeoxsize[1], ix,iy);
       else {
-        if (FLAG(obj2.vignet_dgeox)) 
+        if (FLAG(obj2.vignet_dgeox))
           dgeo_copy(dgeofield, outobj2.vignet_dgeox, NULL,
 		prefs.vignet_dgeoxsize[0],prefs.vignet_dgeoxsize[1], ix,iy);
-        if (FLAG(obj2.vignet_dgeoy)) 
+        if (FLAG(obj2.vignet_dgeoy))
           dgeo_copy(dgeofield, NULL, outobj2.vignet_dgeoy,
 		prefs.vignet_dgeoysize[0],prefs.vignet_dgeoysize[1], ix,iy);
       }
@@ -767,6 +767,7 @@ void	endobject(picstruct *field, picstruct *dfield, picstruct *wfield,
 /*----------------------------- Profile fitting -----------------------------*/
 #ifdef USE_MODEL
     if (prefs.prof_flag)
+      {
       profit_fit(theprofit, field, wfield, dgeofield, obj, obj2);
 /*---- Express positions in FOCAL or WORLD coordinates */
       if (FLAG(obj2.xf_prof) || FLAG(obj2.xw_prof))

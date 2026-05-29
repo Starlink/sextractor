@@ -7,7 +7,7 @@
 *
 *	This file part of:	AstrOmatic FITS/LDAC library
 *
-*	Copyright:		(C) 1995-2020 IAP/CNRS/SorbonneU
+*	Copyright:		(C) 1995-2024 CEA/AIM/UParisSaclay
 *
 *	License:		GNU General Public License
 *
@@ -22,8 +22,6 @@
 *	You should have received a copy of the GNU General Public License
 *	along with AstrOmatic software.
 *	If not, see <http://www.gnu.org/licenses/>.
-*
-*	Last modified:		11/02/2020
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -359,13 +357,13 @@ INPUT	catalog structure,
 OUTPUT	-.
 NOTES	-.
 AUTHOR	E. Bertin (IAP & Leiden observatory)
-VERSION	26/09/2004
+VERSION	03/12/2019
  ***/
 void	end_writeobj(catstruct *cat, tabstruct *tab, char *buf)
 
   {
    keystruct	*key;
-   OFF_T	pos;
+   OFF_T2	pos;
    int		k;
 
 /* Make the table parameters reflect its content*/
@@ -452,7 +450,7 @@ void	print_obj(FILE *stream, tabstruct *tab)
               fprintf(stream, "F");
             }
           else
-            fprintf(stream, key->printf?key->printf:"%d", (int)*ptr);
+            fprintf(stream, *key->printf?key->printf:"%d", (int)*ptr);
           if (i)
             putc(' ', stream);
           break;
@@ -480,8 +478,8 @@ INPUT	Output stream
 	Table structure.
 OUTPUT	-.
 NOTES	-.
-AUTHOR	G. Tissier & E.Bertin (IAP)
-VERSION	13/06/2012
+AUTHOR	G. Tissier (IAP) & E.Bertin (CEA/AIM/UParisSaclay)
+VERSION	11/10/2024
  ***/
 void	voprint_obj(FILE *stream, tabstruct *tab)
 
@@ -538,7 +536,7 @@ void	voprint_obj(FILE *stream, tabstruct *tab)
               fprintf(stream, "F");
             }
           else
-            fprintf(stream, key->printf?key->printf:"%d", (int)*ptr);
+            fprintf(stream, *key->printf?key->printf:"%d", (int)*ptr);
           if (i)
             putc(' ', stream);
           break;

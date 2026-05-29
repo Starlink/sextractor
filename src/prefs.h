@@ -1,3 +1,4 @@
+#pragma once
 /*
 *				prefs.h
 *
@@ -7,7 +8,7 @@
 *
 *	This file part of:	SExtractor
 *
-*	Copyright:		(C) 1993-2020 IAP/CNRS/SorbonneU
+*	Copyright:		(C) 1993-2023 IAP/CNRS/SorbonneU
 *
 *	License:		GNU General Public License
 *
@@ -22,20 +23,13 @@
 *	You should have received a copy of the GNU General Public License
 *	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		15/07/2020
+*	Last modified:		07/03/2023
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-#ifndef _PROFIT_H_
 #include        "profit.h"
-#endif
 
-#ifndef _PATTERN_H_
 #include        "pattern.h"
-#endif
-
-#ifndef _PREFS_H_
-#define _PREFS_H_
 
 /*----------------------------- Internal constants --------------------------*/
 
@@ -136,6 +130,7 @@ typedef struct
   int		backfsize[2];				/* bkgnd filt. size */
   int		nbackfsize;				/* nb of params */
   double	backfthresh;				/* bkgnd fil. thresh */
+  double	back_pearson;				/* Pearson's factor */
   enum	{GLOBAL, LOCAL}			pback_type;	/* phot. bkgnd type */
   int		pback_size;				/* rect. ann. width */
 /*----- memory */
@@ -276,4 +271,3 @@ extern void	dumpprefs(int state),
 		preprefs(void),
 		readprefs(char *filename,char **argkey,char **argval,int narg),
 		useprefs(void);
-#endif

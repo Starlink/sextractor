@@ -7,7 +7,11 @@
 *
 *	This file part of:	SExtractor
 *
-*	Copyright:		(C) 2006-2013 Emmanuel Bertin -- IAP/CNRS/UPMC
+*	Copyright:		(C) 1994,1997 ESO
+*	          		(C) 1995,1996 Leiden Observatory 
+*	          		(C) 1998-2021 IAP/CNRS/SorbonneU
+*	          		(C)	2021-2023 CFHT/CNRS
+*	          		(C) 2023-2025 CEA/AIM/UParisSaclay
 *
 *	License:		GNU General Public License
 *
@@ -22,7 +26,7 @@
 *	You should have received a copy of the GNU General Public License
 *	along with SExtractor. If not, see <http://www.gnu.org/licenses/>.
 *
-*	Last modified:		27/04/2013
+*	Last modified:		19/03/2025
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
@@ -231,8 +235,8 @@ INPUT	Pointer to the output file (or stream),
 	Pointer to an error msg (or NULL).
 OUTPUT	RETURN_OK if everything went fine, RETURN_ERROR otherwise.
 NOTES	-.
-AUTHOR	E. Bertin (IAP)
-VERSION	25/04/2013
+AUTHOR	E. Bertin (CFHT/IAP)
+VERSION	07/03/2023
  ***/
 int	write_xml_meta(FILE *file, char *error)
   {
@@ -546,6 +550,7 @@ int	write_xml_meta(FILE *file, char *error)
     write_xmlconfigparam(file, "BackPhoto_Type", "","meta.code;obs.param", "");
     write_xmlconfigparam(file, "BackPhoto_Thick", "pix", "obs.param", "%d");
     write_xmlconfigparam(file, "Back_FiltThresh", "ct", "obs.param;", "%g");
+    write_xmlconfigparam(file, "Back_Pearson", "", "obs.param;", "%g");
 
     write_xmlconfigparam(file, "CheckImage_Type","","meta.code;obs.param", "");
     write_xmlconfigparam(file, "CheckImage_Name", "",
@@ -598,8 +603,8 @@ INPUT	Output stream (file) pointer,
 	printf() format to use in "value".
 OUTPUT	RETURN_OK if the keyword exists, RETURN_ERROR otherwise.
 NOTES	-.
-AUTHOR	E. Bertin (IAP)
-VERSION	25/04/2013
+AUTHOR	E. Bertin (CEA/AIM/UParisSaclay)
+VERSION	19/03/2025
  ***/
 int	write_xmlconfigparam(FILE *file, char *name, char *unit,
 		 char *ucd, char *format)
@@ -696,7 +701,7 @@ int	write_xmlconfigparam(FILE *file, char *name, char *unit,
 		name, ucd);
       break;
     case P_STRING:
-      sprintf(value, (char *)key[i].ptr);
+      sprintf(value, "%s", (char *)key[i].ptr);
       fprintf(file, "   <PARAM name=\"%s\" datatype=\"char\" arraysize=\"*\""
 	" ucd=\"%s\" value=\"%s\"/>\n",
 	name, ucd, *value? value: " ");
@@ -705,13 +710,13 @@ int	write_xmlconfigparam(FILE *file, char *name, char *unit,
       n = *(key[i].nlistptr);
       if (n)
         {
-        sprintf(value, ((char **)key[i].ptr)[0]);
+        sprintf(value, "%s", ((char **)key[i].ptr)[0]);
         fprintf(file, "   <PARAM name=\"%s\" datatype=\"char\""
 		" arraysize=\"*\" ucd=\"%s\" value=\"%s",
 		name, ucd, *value? value: " ");
         for (j=1; j<n; j++)
           {
-          sprintf(value, ((char **)key[i].ptr)[j]);
+          sprintf(value, "%s", ((char **)key[i].ptr)[j]);
           fprintf(file, ",%s", *value? value: " ");
           }
         fprintf(file, "\"/>\n");
@@ -722,7 +727,7 @@ int	write_xmlconfigparam(FILE *file, char *name, char *unit,
 		name, ucd);
       break;
     case P_KEY:
-      sprintf(value, key[i].keylist[*((int *)key[i].ptr)]);
+      sprintf(value, "%s", key[i].keylist[*((int *)key[i].ptr)]);
       fprintf(file, "   <PARAM name=\"%s\" datatype=\"char\" arraysize=\"*\""
 	" ucd=\"%s\" value=\"%s\"/>\n",
 	name, ucd, value);
@@ -731,13 +736,13 @@ int	write_xmlconfigparam(FILE *file, char *name, char *unit,
       n = *(key[i].nlistptr);
       if (n)
         {
-        sprintf(value, key[i].keylist[((int *)key[i].ptr)[0]]);
+        sprintf(value, "%s", key[i].keylist[((int *)key[i].ptr)[0]]);
         fprintf(file, "   <PARAM name=\"%s\" datatype=\"char\""
 		" arraysize=\"*\" ucd=\"%s\" value=\"%s",
 		name, ucd, value);
         for (j=1; j<n; j++)
           {
-          sprintf(value, key[i].keylist[((int *)key[i].ptr)[j]]);
+          sprintf(value, "%s", key[i].keylist[((int *)key[i].ptr)[j]]);
           fprintf(file, ",%s", value);
           }
         fprintf(file, "\"/>\n");

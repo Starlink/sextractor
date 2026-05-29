@@ -23,8 +23,12 @@
 #
 #	This file part of:	AstrOmatic WCS library
 #
-#	Copyright:		(C) 2002-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
-#				(C) 1995-1999 Mark Calabretta (original WCSlib)
+#	Copyright:		(C) 1994,1997 ESO
+#	          		(C) 1995,1996 Leiden Observatory 
+#	          		(C) 1998-2021 IAP/CNRS/SorbonneU
+#	          		(C) 2021-2023 CFHT/CNRS
+#	          		(C) 2023-2025 CEA/AIM/UParisSaclay
+#	          		(C) 1995-1999 Mark Calabretta (original WCSlib)
 #
 #	Licenses:		GNU General Public License (this file)
 #				GNU Library General Public License (WCSlib)
@@ -41,7 +45,7 @@
 #	along with AstrOmatic software.
 #	If not, see <http://www.gnu.org/licenses/>.
 #
-#	Last modified:		10/10/2010
+#	Last modified:		02/12/2015
 #
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -122,8 +126,8 @@ host_triplet = @host@
 subdir = src/wcs
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_atlas.m4 \
-	$(top_srcdir)/m4/acx_fftw.m4 $(top_srcdir)/m4/acx_mkl.m4 \
-	$(top_srcdir)/m4/acx_openblas.m4 \
+	$(top_srcdir)/m4/acx_cfitsio.m4 $(top_srcdir)/m4/acx_fftw.m4 \
+	$(top_srcdir)/m4/acx_mkl.m4 $(top_srcdir)/m4/acx_openblas.m4 \
 	$(top_srcdir)/m4/acx_prog_cc_optim.m4 \
 	$(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/acx_urbi_resolve_dir.m4 \
@@ -246,6 +250,8 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
+CFITSIO_ERROR = @CFITSIO_ERROR@
+CFITSIO_LIBS = @CFITSIO_LIBS@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
@@ -311,6 +317,7 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_CXX = @PTHREAD_CXX@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 RANLIB = @RANLIB@
 SED = @SED@
@@ -330,6 +337,7 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+ax_pthread_config = @ax_pthread_config@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@

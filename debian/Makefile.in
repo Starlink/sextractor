@@ -119,8 +119,8 @@ host_triplet = @host@
 subdir = debian
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_atlas.m4 \
-	$(top_srcdir)/m4/acx_fftw.m4 $(top_srcdir)/m4/acx_mkl.m4 \
-	$(top_srcdir)/m4/acx_openblas.m4 \
+	$(top_srcdir)/m4/acx_cfitsio.m4 $(top_srcdir)/m4/acx_fftw.m4 \
+	$(top_srcdir)/m4/acx_mkl.m4 $(top_srcdir)/m4/acx_openblas.m4 \
 	$(top_srcdir)/m4/acx_prog_cc_optim.m4 \
 	$(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/acx_urbi_resolve_dir.m4 \
@@ -185,6 +185,8 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
+CFITSIO_ERROR = @CFITSIO_ERROR@
+CFITSIO_LIBS = @CFITSIO_LIBS@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
@@ -250,6 +252,7 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_CXX = @PTHREAD_CXX@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 RANLIB = @RANLIB@
 SED = @SED@
@@ -269,6 +272,7 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+ax_pthread_config = @ax_pthread_config@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@

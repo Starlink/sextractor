@@ -1151,6 +1151,7 @@ AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
 m4_include([m4/acx_atlas.m4])
+m4_include([m4/acx_cfitsio.m4])
 m4_include([m4/acx_fftw.m4])
 m4_include([m4/acx_mkl.m4])
 m4_include([m4/acx_openblas.m4])

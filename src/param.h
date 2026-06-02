@@ -9,6 +9,7 @@
 *	This file part of:	SExtractor
 *
 *	Copyright:		(C) 1993-2016 Emmanuel Bertin -- IAP/CNRS/UPMC
+*       Copyright:              (C) 2000-2014 Science and Technology Facilities Council
 *
 *	License:		GNU General Public License
 *

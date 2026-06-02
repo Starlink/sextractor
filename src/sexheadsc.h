@@ -9,9 +9,7 @@
 *	This file part of:	SExtractor
 *
 *	Copyright:		(C) 1997-2010 Emmanuel Bertin -- IAP/CNRS/UPMC
-*                       30/11/98 (PWD):
-*                          Changed to remove static header list and 
-*                          non-existent id column name.
+*       Copyright:              (C) 2000-2014 Science and Technology Facilities Council
 *
 *	License:		GNU General Public License
 *
@@ -29,6 +27,12 @@
 *	Last modified:		11/10/2010
 *
 *%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
+
+/*
+ *      30/11/98 (PWD):
+ *              Changed to remove static header list and 
+ *              non-existent id column name.
+ */
 
 char	skycathead[] = "QueryResult\n\n"
 	"# Config entry for original catalog server:\n"
